@@ -239,7 +239,16 @@ function renderListings(){
     var tr = document.createElement('tr');
 
     tr.appendChild(thumbCell(l));
-    tr.appendChild(td(l.title || '—', true));
+
+    var titleCell = document.createElement('td');
+    var link = document.createElement('a');
+    link.href = 'listingsview.html?id=' + encodeURIComponent(l.id);
+    link.style.cssText = 'color:inherit;font-weight:600;text-decoration:none';
+    link.textContent = l.title || '—';
+    link.addEventListener('mouseenter', function(){ link.style.textDecoration = 'underline'; });
+    link.addEventListener('mouseleave', function(){ link.style.textDecoration = 'none'; });
+    titleCell.appendChild(link);
+    tr.appendChild(titleCell);
     tr.appendChild(td(l.area || '—'));
     tr.appendChild(td(l.price || '—'));
     tr.appendChild(td(l.unitType || '—'));

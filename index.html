@@ -1,4 +1,3 @@
-<!-- index.html (Login Page) - overwrite existing file -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -8,8 +7,9 @@
   <meta name="description" content="Xspace private portal login" />
   <style>
     :root{
-      --bg:#fff; --fg:#0b0b0b; --muted:#6b6b6b; --card-radius:12px; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto;
-      --line:rgba(0,0,0,0.08); --soft:rgba(0,0,0,0.03);
+      --bg:#fff; --fg:#0b0b0b; --muted:#6b6b6b; --card-radius:12px;
+      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto;
+      --line:rgba(0,0,0,0.08); --soft:rgba(0,0,0,0.03); --accent:#10b981;
     }
     [data-theme="dark"]{ --bg:#000; --fg:#fff; --muted:#9a9a9a; --line:rgba(255,255,255,0.10); --soft:rgba(255,255,255,0.04); }
     html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);-webkit-font-smoothing:antialiased;}
@@ -24,22 +24,18 @@
     .controls{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted)}
     .controls input[type="checkbox"]{width:auto}
     .btn{padding:12px;border-radius:10px;border:0;background:var(--fg);color:var(--bg);font-weight:600;cursor:pointer;width:100%}
+    .btn:disabled{opacity:.55;cursor:default}
     .small{font-size:12px;color:var(--muted);text-align:center;margin-top:12px}
     .toptoggle{position:fixed;right:18px;top:18px;padding:8px 10px;border-radius:999px;background:var(--soft);cursor:pointer}
     .err{display:none;font-size:13px;color:#b00020;background:rgba(176,0,32,.08);border:1px solid rgba(176,0,32,.2);padding:10px 12px;border-radius:10px}
     [data-theme="dark"] .err{color:#ff8a9a;background:rgba(255,138,154,.08);border-color:rgba(255,138,154,.22)}
-    .demo{margin-top:22px;border:1px dashed var(--line);border-radius:12px;padding:14px}
-    .demo h3{margin:0 0 4px;font-size:13px;font-weight:600}
-    .demo .hint{margin:0 0 10px;font-size:12px;color:var(--muted)}
-    .demo-list{display:flex;flex-direction:column;gap:6px}
-    .demo-row{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--fg);font:inherit;font-size:12px;cursor:pointer;text-align:left}
-    .demo-row:hover{background:var(--soft)}
-    .demo-row .who{display:flex;flex-direction:column;gap:2px}
-    .demo-row .who b{font-weight:600}
-    .demo-row .who em{font-style:normal;color:var(--muted)}
-    .demo-row .tag{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:2px 8px;white-space:nowrap}
-    .pw{font-size:12px;color:var(--muted);margin-top:10px;text-align:center}
-    .pw code{background:var(--soft);padding:2px 6px;border-radius:6px}
+    .note{
+      font-size:13px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.30);
+      color:#0f7a5a;padding:12px 14px;border-radius:10px;margin-bottom:4px;
+    }
+    [data-theme="dark"] .note{color:#6ee7b7}
+    .note strong{display:block;margin-bottom:4px}
+    .hint{font-size:12px;color:var(--muted);margin-top:-6px}
   </style>
 </head>
 <body>
@@ -52,64 +48,87 @@
         <div class="sub">Portal</div>
       </div>
 
-      <div style="text-align:center;margin-bottom:10px">
-        <h2 style="margin:0;font-size:18px">Login to continue</h2>
-        <div style="color:var(--muted);font-size:13px;margin-top:8px">Sign in to your private workspace</div>
+      <!-- ============ FIRST RUN: create the founder account ============ -->
+      <div id="setupView" style="display:none">
+        <div style="text-align:center;margin-bottom:14px">
+          <h2 style="margin:0;font-size:18px">Set up your portal</h2>
+          <div style="color:var(--muted);font-size:13px;margin-top:8px">
+            No accounts exist yet. Create the founder account to get started.
+          </div>
+        </div>
+
+        <div class="note">
+          <strong>This is the owner account</strong>
+          It gets full access to every module, every record, and the database
+          console. Everyone else is added by you afterwards from the Team page.
+        </div>
+
+        <form id="setupForm" autocomplete="off" novalidate>
+          <div class="err" id="setupError" role="alert"></div>
+
+          <div>
+            <label for="sName">Your name</label>
+            <input id="sName" type="text" placeholder="e.g. Tej" required />
+          </div>
+          <div>
+            <label for="sEmail">Email</label>
+            <input id="sEmail" type="email" placeholder="you@xspace.co" required />
+          </div>
+          <div>
+            <label for="sPassword">Password</label>
+            <input id="sPassword" type="password" placeholder="At least 8 characters" required />
+            <div class="hint">Use something you don't use anywhere else.</div>
+          </div>
+          <div>
+            <label for="sConfirm">Confirm password</label>
+            <input id="sConfirm" type="password" placeholder="Repeat the password" required />
+          </div>
+
+          <button class="btn" type="submit" id="setupBtn">Create founder account</button>
+        </form>
       </div>
 
-      <form id="loginForm" autocomplete="off" novalidate>
-        <div class="err" id="errorBox" role="alert"></div>
-
-        <div>
-          <label for="email">Email</label>
-          <input id="email" name="email" type="email" placeholder="name@xspace.co" required />
+      <!-- ==================== NORMAL LOGIN ==================== -->
+      <div id="loginView" style="display:none">
+        <div style="text-align:center;margin-bottom:10px">
+          <h2 style="margin:0;font-size:18px">Login to continue</h2>
+          <div style="color:var(--muted);font-size:13px;margin-top:8px">Sign in to your private workspace</div>
         </div>
 
-        <div>
-          <label for="password">Password</label>
-          <input id="password" name="password" type="password" placeholder="Enter your password" required />
-        </div>
+        <form id="loginForm" autocomplete="off" novalidate>
+          <div class="err" id="errorBox" role="alert"></div>
 
-        <div class="controls">
-          <label><input id="remember" type="checkbox" /> Remember me</label>
-          <a href="#" id="forgot" style="color:var(--muted);text-decoration:none">Forgot?</a>
-        </div>
+          <div>
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" placeholder="you@xspace.co" required />
+          </div>
 
-        <div>
+          <div>
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" placeholder="Enter your password" required />
+          </div>
+
+          <div class="controls">
+            <label><input id="remember" type="checkbox" /> Remember me</label>
+            <a href="#" id="forgot" style="color:var(--muted);text-decoration:none">Forgot?</a>
+          </div>
+
           <button class="btn" type="submit" id="loginBtn">Login to Portal</button>
-        </div>
 
-        <div class="small">Private Access • Xspace team only</div>
-      </form>
-
-      <div class="demo">
-        <h3>Demo accounts</h3>
-        <div class="hint">Click an account to fill the form, then press Login.</div>
-        <div class="demo-list" id="demoList"></div>
-        <div class="pw">Password for every demo account: <code>xspace123</code></div>
+          <div class="small">Private Access • Xspace team only</div>
+        </form>
       </div>
 
       <div class="small" style="margin-top:18px">© <span id="year"></span> Xspace &amp; Co.</div>
     </section>
   </main>
 
+  <script src="portal-db.js"></script>
   <script>
-    // ---------- DEMO AUTH (front-end only) ----------
-    // These map 1:1 to the users seeded by dashboard.html (ids u1..u5),
-    // so the role-based UI resolves the correct user after login.
-    const DEMO_USERS = [
-      {id:'u1', name:'Tej (Founder)',   email:'tej@xspace.co',     password:'xspace123', role:'founder'},
-      {id:'u2', name:'Karthik (Core)',  email:'karthik@xspace.co', password:'xspace123', role:'core'},
-      {id:'u3', name:'Sai (Agent)',     email:'sai@xspace.co',     password:'xspace123', role:'agent'},
-      {id:'u4', name:'Priya (Creator)', email:'priya@xspace.co',   password:'xspace123', role:'creator'},
-      {id:'u5', name:'Studio Team',     email:'studio@xspace.co',  password:'xspace123', role:'studio'}
-    ];
-
-    const THEME_KEY = 'xspace_theme';
-    const AUTH_KEY  = 'xspace_auth'; // session flag
     document.getElementById('year').textContent = new Date().getFullYear();
 
     // ---------- theme ----------
+    const THEME_KEY = 'xspace_theme';
     const root = document.documentElement;
     const themeToggle = document.getElementById('themeToggle');
     applyTheme(localStorage.getItem(THEME_KEY) || 'light');
@@ -121,97 +140,95 @@
     themeToggle.addEventListener('click', ()=> applyTheme(root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
     themeToggle.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') themeToggle.click(); });
 
-    // ---------- already logged in ----------
-    if(localStorage.getItem(AUTH_KEY) === '1'){
+    // ---------- already signed in ----------
+    if(XPortal.isAuthed() && XPortal.hasAnyUser()){
       window.location.href = 'dashboard.html';
     }
 
-    // ---------- demo credential list ----------
-    const demoList = document.getElementById('demoList');
-    DEMO_USERS.forEach(function(u){
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'demo-row';
+    // ---------- which view? ----------
+    // An empty portal shows first-run setup; once an account exists it can
+    // never be shown again, so nobody can mint a second founder later.
+    const firstRun = !XPortal.hasAnyUser();
+    document.getElementById('setupView').style.display = firstRun ? 'block' : 'none';
+    document.getElementById('loginView').style.display = firstRun ? 'none' : 'block';
 
-      const who = document.createElement('span');
-      who.className = 'who';
-      const nm = document.createElement('b');
-      nm.textContent = u.name;
-      const em = document.createElement('em');
-      em.textContent = u.email;
-      who.appendChild(nm);
-      who.appendChild(em);
-
-      const tag = document.createElement('span');
-      tag.className = 'tag';
-      tag.textContent = u.role;
-
-      btn.appendChild(who);
-      btn.appendChild(tag);
-      btn.addEventListener('click', function(){
-        document.getElementById('email').value = u.email;
-        document.getElementById('password').value = u.password;
-        hideError();
-        document.getElementById('loginBtn').focus();
-      });
-      demoList.appendChild(btn);
-    });
-
-    function showError(msg){
-      const box = document.getElementById('errorBox');
+    function showError(id, msg){
+      const box = document.getElementById(id);
       box.textContent = msg;
       box.style.display = 'block';
     }
-    function hideError(){ document.getElementById('errorBox').style.display = 'none'; }
+    function hideError(id){ document.getElementById(id).style.display = 'none'; }
+
+    // ---------- first run ----------
+    document.getElementById('setupForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      hideError('setupError');
+
+      const name    = document.getElementById('sName').value.trim();
+      const email   = document.getElementById('sEmail').value.trim();
+      const pass    = document.getElementById('sPassword').value;
+      const confirm = document.getElementById('sConfirm').value;
+
+      if(!name){ showError('setupError', 'Enter your name.'); return; }
+      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ showError('setupError', 'Enter a valid email address.'); return; }
+      if(pass.length < 8){ showError('setupError', 'Password must be at least 8 characters.'); return; }
+      if(pass !== confirm){ showError('setupError', 'The two passwords do not match.'); return; }
+
+      const btn = document.getElementById('setupBtn');
+      btn.disabled = true;
+      btn.textContent = 'Creating…';
+
+      XPortal.createFounder({ name: name, email: email, password: pass })
+        .then(function(){ window.location.href = 'dashboard.html'; })
+        .catch(function(err){
+          showError('setupError', err.message || 'Could not create the account.');
+          btn.disabled = false;
+          btn.textContent = 'Create founder account';
+        });
+    });
 
     // ---------- login ----------
     document.getElementById('loginForm').addEventListener('submit', function(e){
       e.preventDefault();
-      hideError();
-      const email = document.getElementById('email').value.trim().toLowerCase();
+      hideError('errorBox');
+
+      const email = document.getElementById('email').value.trim();
       const pass  = document.getElementById('password').value;
 
-      if(!email || !pass){
-        showError('Please enter both email and password.');
-        return;
-      }
+      if(!email || !pass){ showError('errorBox', 'Enter both email and password.'); return; }
 
-      const user = DEMO_USERS.find(function(u){
-        return u.email.toLowerCase() === email && u.password === pass;
-      });
+      const btn = document.getElementById('loginBtn');
+      btn.disabled = true;
+      btn.textContent = 'Signing in…';
 
-      if(!user){
-        showError('Invalid credentials. Use one of the demo accounts listed below.');
-        return;
-      }
-
-      // Demo session only. In a real app, store the token returned by the backend.
-      localStorage.setItem(AUTH_KEY, '1');
-      localStorage.setItem('xspace_role', user.role);
-      localStorage.setItem('xspace_user_id', user.id);
-      localStorage.setItem('xspace_user_email', user.email);
-      localStorage.setItem('xspace_user_name', user.name);
-
-      if(document.getElementById('remember').checked){
-        localStorage.setItem('xspace_remember_email', user.email);
-      } else {
-        localStorage.removeItem('xspace_remember_email');
-      }
-
-      window.location.href = 'dashboard.html';
+      XPortal.signIn(email, pass)
+        .then(function(user){
+          if(document.getElementById('remember').checked){
+            localStorage.setItem('xspace_remember_email', user.email);
+          } else {
+            localStorage.removeItem('xspace_remember_email');
+          }
+          window.location.href = 'dashboard.html';
+        })
+        .catch(function(err){
+          showError('errorBox', err.message || 'Could not sign in.');
+          btn.disabled = false;
+          btn.textContent = 'Login to Portal';
+        });
     });
 
-    // ---------- prefill remembered email ----------
+    // ---------- remembered email ----------
     const remembered = localStorage.getItem('xspace_remember_email');
-    if(remembered){
+    if(remembered && !firstRun){
       document.getElementById('email').value = remembered;
       document.getElementById('remember').checked = true;
     }
 
-    // ---------- forgot (demo) ----------
+    // ---------- forgot ----------
     document.getElementById('forgot').addEventListener('click', function(e){
       e.preventDefault();
-      alert('Demo portal — password reset is not wired up.\n\nEvery demo account uses the password: xspace123');
+      alert('Ask the founder to reset your password from the Team page.\n\n' +
+            'Once this portal is connected to Supabase, password resets will be sent by email.');
     });
   </script>
 </body>

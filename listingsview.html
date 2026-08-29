@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Xspace & Co | Listing Intelligence</title>
+<title>Xspace &amp; Co | Listing Intelligence</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
@@ -28,16 +28,20 @@ body{margin:0;background:var(--bg);color:var(--fg);}
   display:flex;
   justify-content:space-between;
   align-items:flex-start;
+  gap:12px;
+  flex-wrap:wrap;
 }
-h1{margin:0;}
+h1{margin:0;font-size:22px;}
+h3{margin:0 0 12px;font-size:16px;}
 .small{font-size:13px;color:var(--muted);}
 
 .badge{
   padding:4px 10px;
   border-radius:999px;
   font-size:12px;
+  background:#64748b;
 }
-.verified{background:#22c55e;color:#000;}
+.badge.verified{background:#22c55e;color:#000;}
 .hot{color:#ef4444;font-weight:600;}
 
 .grid{
@@ -45,6 +49,8 @@ h1{margin:0;}
   grid-template-columns:repeat(4,1fr);
   gap:12px;
 }
+@media (max-width:820px){ .grid{grid-template-columns:repeat(2,1fr);} }
+@media (max-width:480px){ .grid{grid-template-columns:1fr;} }
 .box{
   background:rgba(255,255,255,0.04);
   padding:12px;
@@ -54,157 +60,167 @@ h1{margin:0;}
   display:block;
   font-size:12px;
   color:var(--muted);
+  margin-bottom:2px;
 }
 
-.amenities{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:10px;
+.photo-strip{display:flex;gap:8px;flex-wrap:wrap;}
+.photo-strip img{
+  width:120px;height:90px;object-fit:cover;
+  border-radius:8px;border:1px solid var(--border);
 }
-.amenity{
-  background:rgba(255,255,255,0.04);
-  padding:10px;
-  border-radius:8px;
-  font-size:14px;
-}
-
-input[type="file"], input[type="text"]{
-  width:100%;
-  background:#020617;
-  border:1px solid var(--border);
-  color:var(--fg);
-  padding:8px;
-  border-radius:8px;
-  margin-top:6px;
-}
+.notfound{text-align:center;color:var(--muted);padding:40px;}
+.notfound a{color:var(--accent);}
 </style>
 </head>
 
 <body>
 <div class="container">
 
-<!-- HEADER -->
-<div class="section header">
-  <div>
-    <h1>MyHome Avatar – 3BHK</h1>
-    <div class="small">📍 Tellapur, West Hyderabad</div>
-    <div class="small">Submitted by: Sai (Agent)</div>
-    <div class="small hot">🔥 High Demand</div>
-  </div>
-  <div>
-    <span class="badge verified">Verified</span>
-  </div>
+<div id="notFound" class="section notfound" style="display:none">
+  This listing could not be found. <a href="listings.html">Back to Listings</a>
 </div>
 
-<!-- PROJECT SNAPSHOT -->
-<div class="section">
-  <h3>Project Snapshot</h3>
-  <div class="grid">
-    <div class="box"><strong>Builder</strong>MyHome Group</div>
-    <div class="box"><strong>Property Type</strong>Apartment (Gated)</div>
-    <div class="box"><strong>Configuration</strong>3BHK</div>
-    <div class="box"><strong>Possession</strong>Dec 2027</div>
-  </div>
-</div>
+<div id="content" style="display:none">
 
-<!-- UNIT DETAILS -->
-<div class="section">
-  <h3>Unit Details</h3>
-  <div class="grid">
-    <div class="box"><strong>Super Built-up Area</strong>2,050 sft</div>
-    <div class="box"><strong>Carpet Area</strong>1,450 sft</div>
-    <div class="box"><strong>UDS</strong>65 sq yds</div>
-    <div class="box"><strong>Facing</strong>East</div>
-  </div>
-</div>
-
-<!-- AMENITIES -->
-<div class="section">
-  <h3>Amenities</h3>
-  <div class="amenities">
-    <div class="amenity">🏊 Swimming Pool</div>
-    <div class="amenity">🏋️ Gymnasium</div>
-    <div class="amenity">🌳 Landscaped Gardens</div>
-    <div class="amenity">🎾 Sports Courts</div>
-    <div class="amenity">🧒 Children’s Play Area</div>
-    <div class="amenity">🛡️ 24×7 Security</div>
-    <div class="amenity">🚗 Visitor Parking</div>
-    <div class="amenity">🏠 Clubhouse</div>
-    <div class="amenity">🚶 Jogging Track</div>
-  </div>
-</div>
-
-<!-- PRICE & COMMERCIALS -->
-<div class="section">
-  <h3>Price & Commercials</h3>
-  <div class="grid">
-    <div class="box"><strong>Base Price</strong>₹1.05 Cr</div>
-    <div class="box"><strong>All-Inclusive</strong>₹1.15 Cr</div>
-    <div class="box"><strong>Negotiation</strong>Limited</div>
-    <div class="box"><strong>Commission</strong>2% (Builder)</div>
-  </div>
-</div>
-
-<!-- LEGAL & VERIFICATION -->
-<div class="section">
-  <h3>Legal & Verification</h3>
-  <div class="grid">
-    <div class="box"><strong>RERA No.</strong>P02400005555</div>
-    <div class="box"><strong>Approval</strong>HMDA</div>
-    <div class="box"><strong>Title Status</strong>Clear</div>
-    <div class="box"><strong>Bank Approved</strong>HDFC, SBI, ICICI</div>
-  </div>
-</div>
-
-<!-- MEDIA & DOCUMENTS -->
-<div class="section">
-  <h3>Media & Documents</h3>
-
-  <div class="box" style="margin-bottom:12px">
-    <strong>Photos</strong>
-    <div class="small">Elevation, amenities, site images</div>
-    <input type="file" multiple accept="image/*">
+  <!-- HEADER -->
+  <div class="section header">
+    <div>
+      <h1 id="lTitle">—</h1>
+      <div class="small" id="lArea"></div>
+      <div class="small" id="lSubmitted"></div>
+    </div>
+    <div><span class="badge" id="lBadge">—</span></div>
   </div>
 
-  <div class="box" style="margin-bottom:12px">
-    <strong>Videos</strong>
-    <div class="small">Walkthrough / Drone / Reel</div>
-    <input type="file" multiple accept="video/*">
-    <input type="text" placeholder="Instagram / YouTube video link">
+  <!-- PHOTOS -->
+  <div class="section" id="photoSection" style="display:none">
+    <h3>Photos</h3>
+    <div class="photo-strip" id="photoStrip"></div>
   </div>
 
-  <div class="box">
-    <strong>Documents (PDF)</strong>
-    📄 Brochure
-    <input type="file" accept=".pdf"><br><br>
-    📄 Floor Plan
-    <input type="file" accept=".pdf"><br><br>
-    📄 Price Sheet
-    <input type="file" accept=".pdf">
+  <!-- PROJECT SNAPSHOT -->
+  <div class="section">
+    <h3>Project Snapshot</h3>
+    <div class="grid">
+      <div class="box"><strong>Project</strong><span id="pName">—</span></div>
+      <div class="box"><strong>Builder</strong><span id="pBuilder">—</span></div>
+      <div class="box"><strong>RERA</strong><span id="pRera">—</span></div>
+      <div class="box"><strong>Status</strong><span id="pStatus">—</span></div>
+    </div>
   </div>
-</div>
 
-<!-- SITE VISITS -->
-<div class="section">
-  <h3>Site Visits</h3>
-  <div class="small">
-    • 12 Jan 2026 – Ramesh Kumar<br>
-    • 18 Jan 2026 – NRI Client (Scheduled)
+  <!-- UNIT DETAILS -->
+  <div class="section">
+    <h3>Unit Details</h3>
+    <div class="grid">
+      <div class="box"><strong>Configuration</strong><span id="uType">—</span></div>
+      <div class="box"><strong>Area</strong><span id="uArea">—</span></div>
+      <div class="box"><strong>Price</strong><span id="uPrice">—</span></div>
+      <div class="box"><strong>Availability</strong><span id="uStatus">—</span></div>
+    </div>
   </div>
-</div>
 
-<!-- INTERNAL NOTES -->
-<div class="section">
-  <h3>Internal Notes</h3>
-  <div class="small">
-    Tower B preferred.  
-    Clients asking for higher floors.  
-    Inventory moving fast.
+  <!-- CLIENT INTEREST -->
+  <div class="section">
+    <h3>Client Interest</h3>
+    <div class="small" id="interestList">No clients linked to this listing yet.</div>
   </div>
-</div>
+
+  <!-- SITE VISITS -->
+  <div class="section">
+    <h3>Site Visits</h3>
+    <div class="small" id="visitList">No site visits recorded for this listing.</div>
+  </div>
 
 </div>
+</div>
+
   <script src="portal-db.js"></script>
+  <script>
+  if(!XPortal.requireModule('listings')){ throw new Error('access denied'); }
+
+  var id = new URLSearchParams(window.location.search).get('id');
+  var l  = id ? XPortal.find('listings', id) : null;
+  var ME = XPortal.currentUser();
+
+  // Founder can open any listing; everyone else only their own.
+  var mine = l && (l.submittedBy === ME.id || l.assignedAgent === ME.id);
+
+  if(!l || !(XPortal.can('data.viewAll') || mine)){
+    document.getElementById('notFound').style.display = 'block';
+    if(l) document.getElementById('notFound').textContent = 'You do not have access to this listing.';
+  } else {
+    document.getElementById('content').style.display = 'block';
+    render();
+  }
+
+  function set(elId, text){
+    var el = document.getElementById(elId);
+    if(el) el.textContent = text || '—';
+  }
+
+  function render(){
+    set('lTitle', l.title);
+    set('lArea', l.area ? '📍 ' + l.area : '');
+    set('lSubmitted', 'Submitted by: ' + XPortal.userName(l.submittedBy || l.assignedAgent));
+
+    var badge = document.getElementById('lBadge');
+    badge.textContent = l.verified ? 'Verified' : 'Unverified';
+    badge.className = 'badge' + (l.verified ? ' verified' : '');
+
+    var p = l.projectId ? XPortal.find('projects', l.projectId) : null;
+    set('pName',    p && p.name);
+    set('pBuilder', p && p.builder);
+    set('pRera',    p && p.rera);
+    set('pStatus',  p && p.status);
+
+    set('uType',   l.unitType);
+    set('uArea',   l.area);
+    set('uPrice',  l.price);
+    set('uStatus', l.status);
+
+    var photos = l.photos || [];
+    if(photos.length){
+      document.getElementById('photoSection').style.display = 'block';
+      var strip = document.getElementById('photoStrip');
+      photos.forEach(function(ph, i){
+        var img = document.createElement('img');
+        // `url` once photos live in Supabase Storage; `thumb` while local.
+        img.src = ph.url || ph.thumb;
+        img.alt = (l.title || 'Listing') + ' photo ' + (i + 1);
+        img.loading = 'lazy';
+        strip.appendChild(img);
+      });
+    }
+
+    var leads = XPortal.scoped('leads', ['assignedAgent'])
+                       .filter(function(c){ return c.listingId === l.id; });
+    if(leads.length){
+      var host = document.getElementById('interestList');
+      host.textContent = '';
+      leads.forEach(function(c){
+        var d = document.createElement('div');
+        d.textContent = '• ' + c.name + ' — ' + (c.status || '') +
+                        (c.budget ? ' • ' + c.budget : '');
+        host.appendChild(d);
+      });
+    }
+
+    var visits = XPortal.scoped('visits', ['agentId'])
+                        .filter(function(v){ return v.listingId === l.id; });
+    if(visits.length){
+      var vh = document.getElementById('visitList');
+      vh.textContent = '';
+      visits.forEach(function(v){
+        var d = document.createElement('div');
+        d.textContent = '• ' + new Date(v.scheduledAt).toLocaleString() +
+                        ' — ' + XPortal.userName(v.agentId) +
+                        ' (' + (v.status || 'Scheduled') + ')';
+        vh.appendChild(d);
+      });
+    }
+  }
+  </script>
   <script src="portal-nav.js"></script>
 </body>
 </html>

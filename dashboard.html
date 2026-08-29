@@ -479,7 +479,7 @@
         <div id="coreContactInfo" style="margin-top:12px; display:none;">
           <div style="padding:10px; border-radius:8px; background:rgba(255,255,255,0.02);">
             <div><strong>Core Team</strong></div>
-            <div class="small muted">Karthik (Core) — +91 90000 00002 • karthik@xspace.co</div>
+            <div class="small muted" id="coreContactLine">No Core Team member added yet.</div>
             <div style="height:8px"></div>
             <div class="small muted">If urgent, call directly. Otherwise use "Send Message" and Core will get a ticket.</div>
           </div>
@@ -613,111 +613,9 @@
   const AUTH = localStorage.getItem('xspace_auth') === '1';
   const DEV = new URL(window.location.href).searchParams.get('dev');
 
+  // Demo seeding lived here. The portal now starts empty and portal-db.js owns
+  // the store, so this only keeps the session's user id in step.
   function seedDemo(){
-    if(localStorage.getItem('xspace_demo_seed') === '1') {
-      ensureUserIdForRole(); // keep consistent
-      return;
-    }
-    localStorage.setItem('xspace_demo_seed','1');
-
-    const users = [
-      {id:'u1', name:'Tej (Founder)', email:'tej@xspace.co', role:'founder', photo:'', presence:'online'},
-      {id:'u2', name:'Karthik (Core)', email:'karthik@xspace.co', role:'core', photo:'', presence:'online'},
-      {id:'u3', name:'Sai (Agent)', email:'sai@xspace.co', role:'agent', photo:'', presence:'away'},
-      {id:'u4', name:'Priya (Creator)', email:'priya@xspace.co', role:'creator', photo:'', presence:'online'},
-      {id:'u5', name:'Studio Team', email:'studio@xspace.co', role:'studio', photo:'', presence:'online'}
-    ];
-    localStorage.setItem('xspace_users', JSON.stringify(users));
-
-    const projects = [
-      {id:'p1', name:'MyHome Avatar', builder:'MyHome', rera:'P02200002975', status:'Under Construction', units:500},
-      {id:'p2', name:'Vasavi Skyla', builder:'Vasavi', rera:'P022000XXXXX', status:'Ready', units:120},
-    ];
-    localStorage.setItem('xspace_projects', JSON.stringify(projects));
-
-    const listings = [
-      {id:'l1', title:'2BHK Tellapur', projectId:'p1', area:'Tellapur', price:'1.15 Cr', unitType:'2BHK', status:'Available', verified:false, assignedAgent:'u3'},
-      {id:'l2', title:'3BHK Nallagandla', projectId:'p2', area:'Nallagandla', price:'1.9 Cr', unitType:'3BHK', status:'Ready', verified:true, assignedAgent:'u3'},
-    ];
-    localStorage.setItem('xspace_listings', JSON.stringify(listings));
-
-    const leads = [
-      {id:'c1', name:'Ramesh', phone:'9000000001', source:'Instagram', budget:'1.5 Cr', status:'Discovery', assignedAgent:'u3', createdAt: Date.now()-3600*1000, listingId:'l1'},
-      {id:'c2', name:'Sita', phone:'9000000002', source:'Referral', budget:'2 Cr', status:'Engaged', assignedAgent:'u3', createdAt: Date.now()-(3600*24*1000), listingId:'l2'},
-      {id:'c3', name:'Rahul', phone:'9000000003', source:'Website', budget:'1.1 Cr', status:'Site Visit', assignedAgent:'u3', createdAt: Date.now()-(3600*2*1000), listingId:'l1'},
-      // a closed conversion example
-      {id:'c4', name:'Anita', phone:'9000000004', source:'Referral', budget:'2.5 Cr', status:'Closed', assignedAgent:'u3', createdAt: Date.now()-(3600*24*1000*5), listingId:'l2'}
-    ];
-    localStorage.setItem('xspace_leads', JSON.stringify(leads));
-
-    // agent-contributed leads (counts and minimal data)
-    const leadsContributed = [
-      {id:'lc1', agentId:'u3', name:'Network - Reddy', createdAt: Date.now()-(3600*24*5)},
-      {id:'lc2', agentId:'u3', name:'Friend - Mohan', createdAt: Date.now()-(3600*24*20)}
-    ];
-    localStorage.setItem('xspace_leads_contributed', JSON.stringify(leadsContributed));
-
-    // visits dataset - each visit has agentId, listingId, clientId, scheduledAt, endedAt (if completed), feedbackSubmittedAt
-    const visits = [
-      {id:'v1', agentId:'u3', listingId:'l1', clientId:'c1', scheduledAt: Date.now()-(3600*24*1), endedAt: Date.now()-(3600*24*1)+3600*1000, feedbackSubmittedAt: Date.now()-(3600*24*1)+3600*1000 + (10*60*1000)}, // 10 min feedback
-      {id:'v2', agentId:'u3', listingId:'l2', clientId:'c2', scheduledAt: Date.now()-(3600*24*2), endedAt: Date.now()-(3600*24*2)+3600*1000, feedbackSubmittedAt: Date.now()-(3600*24*2)+3600*1000 + (45*60*1000)}, // 45 min feedback
-      {id:'v3', agentId:'u3', listingId:'l1', clientId:'c3', scheduledAt: Date.now() + (3600*1000*6), endedAt: null, feedbackSubmittedAt: null} // scheduled in future
-    ];
-    localStorage.setItem('xspace_visits', JSON.stringify(visits));
-
-    // listing submissions by agents - includes firstPassApproved boolean for quality calculation
-    const listingSubmissions = [
-      {id:'ls1', agentId:'u3', listingId:'l3', title:'2BHK Gated Tellapur', createdAt: Date.now()-(3600*24*6), firstPassApproved:true},
-      {id:'ls2', agentId:'u3', listingId:'l4', title:'3BHK Newbuild', createdAt: Date.now()-(3600*24*10), firstPassApproved:false}
-    ];
-    localStorage.setItem('xspace_listing_submissions', JSON.stringify(listingSubmissions));
-
-    const activity = [
-      {id:'a1', text:'Agent Sai added 2BHK Tellapur', time:Date.now()-3600*1000},
-      {id:'a2', text:'Core Karthik verified project MyHome Avatar', time:Date.now()-(3600*2*1000)},
-    ];
-    localStorage.setItem('xspace_activity', JSON.stringify(activity));
-
-    const notifications = [
-      {id:'n1', type:'approval', title:'Price change request — 3BHK Nallagandla', body:'Agent requested -5% price change', role:'founder', read:false, ts:Date.now()-400000},
-      {id:'n2', type:'lead', title:'New lead: Ramesh', body:'Source: Instagram — budget 1.5 Cr', role:'agent', read:false, ts:Date.now()-350000},
-    ];
-    localStorage.setItem('xspace_notifications', JSON.stringify(notifications));
-
-    // demo tickets
-    const tickets = [
-      {id:'t1', title:'Price mismatch for 2BHK Tellapur', category:'listing', priority:'high', raiser:'u3', status:'open', createdAt:Date.now()-(3600*5*1000)},
-      {id:'t2', title:'Need RERA docs for MyHome Avatar', category:'legal', priority:'medium', raiser:'u2', status:'open', createdAt:Date.now()-(3600*24*1000)}
-    ];
-    localStorage.setItem('xspace_tickets', JSON.stringify(tickets));
-
-    // new: demo verifications dataset (core)
-    const verifications = [
-      {id:'v1', listingId:'l1', projectId:'p1', type:'Listing', status:'pending', assignedTo:null, createdAt:Date.now()-(3600*6*1000), startedAt:null, finishedAt:null, notes:'Price check pending', escalated:false},
-      {id:'v2', listingId:'l2', projectId:'p2', type:'Project', status:'inprogress', assignedTo:'u2', createdAt:Date.now()-(3600*12*1000), startedAt:Date.now()-(3600*11*1000), finishedAt:null, notes:'Verifying RERA', escalated:false},
-      {id:'v3', listingId:'l2', projectId:'p2', type:'Project', status:'verified', assignedTo:'u2', createdAt:Date.now()-(3600*48*1000), startedAt:Date.now()-(3600*47*1000), finishedAt:Date.now()-(3600*46*1000), notes:'OK', escalated:false}
-    ];
-    localStorage.setItem('xspace_verifications', JSON.stringify(verifications));
-
-    const audit = [
-      {id:'ad1', text:'Listing l2 marked verified by u2', ts:Date.now()-(3600*6*1000)},
-      {id:'ad2', text:'User u4 created content draft for p1', ts:Date.now()-(3600*12*1000)}
-    ];
-    localStorage.setItem('xspace_audit', JSON.stringify(audit));
-
-    const commissions = [
-      {agent:'Sai', agentId:'u3', pending:'₹45,000', paid:'₹1,20,000'},
-      {agent:'Karthik', agentId:'u2', pending:'₹10,000', paid:'₹55,000'}
-    ];
-    localStorage.setItem('xspace_commissions', JSON.stringify(commissions));
-
-    const studio = [
-      {id:'s1', title:'Project p1 — Drone Shoot', status:'Pending'},
-      {id:'s2', title:'Project p2 — Photography', status:'In Progress'},
-      {id:'s3', title:'Edit: p1 Walkthrough', status:'Pending'}
-    ];
-    localStorage.setItem('xspace_studio', JSON.stringify(studio));
-
     ensureUserIdForRole();
   }
 
@@ -1780,6 +1678,20 @@
     return changed;
   }
 
+  // Core contact card — reads the real team list; shows nothing invented.
+  function renderCoreContact(){
+    const line = document.getElementById('coreContactLine');
+    if(!line) return;
+    const core = XPortal.list('users').filter(u => (u.role||'').toLowerCase() === 'core' && u.active !== false);
+    if(!core.length){
+      line.textContent = 'No Core Team member added yet.';
+      return;
+    }
+    line.textContent = core.map(u =>
+      u.name + (u.phone ? ' — ' + u.phone : '') + (u.email ? ' • ' + u.email : '')
+    ).join('  |  ');
+  }
+
   // Ticket flow
   function openTicketModal(){ const el=document.getElementById('ticketModal'); if(el) el.style.display = 'block'; }
   function closeTicketModal(){ const el=document.getElementById('ticketModal'); if(el) el.style.display = 'none'; }
@@ -2066,6 +1978,7 @@
 
     renderSidebar();
     applyRoleVisibility();
+    renderCoreContact();
     renderDailySnapshot();
     renderApprovals();
     renderActivity();

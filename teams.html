@@ -69,6 +69,8 @@
         <input id="name" class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2" placeholder="Full Name"/>
         <input id="email" class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2" placeholder="Email (login id)"/>
         <input id="phone" class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2" placeholder="Phone Number"/>
+        <input id="password" type="password" class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2" placeholder="Password (min 8 characters)"/>
+        <p id="pwHint" class="text-xs text-gray-500 -mt-1">They sign in with this email and password. Leave blank when editing to keep the current one.</p>
         <select id="role" onchange="onRoleChange()" class="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2">
           <option value="">Select Role</option>
           <option value="agent">Agent</option>
@@ -256,6 +258,7 @@
     editingId = m.id;
     document.getElementById('modalTitle').textContent = 'Edit Member';
     document.getElementById('saveBtn').textContent = 'Save';
+    document.getElementById('password').placeholder = 'New password (leave blank to keep current)';
     clearForm();
     document.getElementById('name').value  = m.name || '';
     document.getElementById('email').value = m.email || '';
@@ -283,6 +286,7 @@
       editingId = null;
       document.getElementById('modalTitle').textContent = 'Add Member';
       document.getElementById('saveBtn').textContent = 'Add';
+      document.getElementById('password').placeholder = 'Password (min 8 characters)';
       clearForm();
     }
   }
@@ -292,14 +296,24 @@
     var name  = document.getElementById('name').value.trim();
     var email = document.getElementById('email').value.trim().toLowerCase();
     var phone = document.getElementById('phone').value.trim();
+    var pass  = document.getElementById('password').value;
     var role  = document.getElementById('role').value;
 
     if(!name || !phone || !role){
       showErr('Name, Phone and Role are required.');
       return;
     }
-    if(email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){
-      showErr('Enter a valid email address.');
+    // Email and password are the login: a member without both can never sign in.
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){
+      showErr('A valid email is required — it is their login id.');
+      return;
+    }
+    if(!editingId && pass.length < 8){
+      showErr('Set a password of at least 8 characters so they can sign in.');
+      return;
+    }
+    if(editingId && pass && pass.length < 8){
+      showErr('The new password must be at least 8 characters.');
       return;
     }
 
@@ -312,33 +326,63 @@
       return;
     }
 
+    var saveBtn = document.getElementById('saveBtn');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving…';
+
+    function done(){
+      saveBtn.disabled = false;
+      toggleModal(false);
+      currentTab = role;
+      syncTabs();
+      renderTable(currentTab);
+    }
+    function failed(err){
+      saveBtn.disabled = false;
+      saveBtn.textContent = editingId ? 'Save' : 'Add';
+      showErr(err.message || 'Could not save.');
+    }
+
     if(editingId){
-      if(!CAN_EDIT){ showErr('Only the Founder account can edit members.'); return; }
+      if(!CAN_EDIT){ failed(new Error('Only the Founder account can edit members.')); return; }
       XPortal.update('users', editingId, {
         name: name, email: email, phone: phone, role: role, details: detailsFor(role)
       });
       XPortal.audit('Founder updated team member ' + name);
-    } else {
-      if(!CAN_ADD){ showErr('Only the Founder account can add members.'); return; }
-      XPortal.insert('users', {
-        id: XPortal.uid('u'),
-        name: name,
-        email: email,
-        phone: phone,
-        role: role,
-        details: detailsFor(role),
-        photo: '',
-        presence: 'offline',
-        active: true
-      });
-      XPortal.audit('Founder added team member ' + name + ' (' + role + ')');
-      XPortal.activity('New ' + (ROLE_LABELS[role] || role) + ' added: ' + name);
+      // A blank password field means "leave the current one alone".
+      (pass ? XPortal.setPassword(editingId, pass).then(function(){
+                XPortal.audit('Founder reset the password for ' + name);
+              })
+            : Promise.resolve())
+        .then(done).catch(failed);
+      return;
     }
 
-    toggleModal(false);
-    currentTab = role;
-    syncTabs();
-    renderTable(currentTab);
+    if(!CAN_ADD){ failed(new Error('Only the Founder account can add members.')); return; }
+    var id = XPortal.uid('u');
+    XPortal.insert('users', {
+      id: id,
+      name: name,
+      email: email,
+      phone: phone,
+      role: role,
+      details: detailsFor(role),
+      photo: '',
+      presence: 'offline',
+      active: true,
+      createdAt: Date.now()
+    });
+    XPortal.setPassword(id, pass).then(function(){
+      XPortal.audit('Founder added team member ' + name + ' (' + role + ')');
+      XPortal.activity('New ' + (ROLE_LABELS[role] || role) + ' added: ' + name);
+      done();
+      alert(name + ' can now sign in with:\n\n  ' + email + '\n  (the password you just set)\n\n' +
+            'Ask them to change it after their first login.');
+    }).catch(function(err){
+      // Don't leave a member behind who can never log in.
+      XPortal.remove('users', id);
+      failed(err);
+    });
   }
 
   // ---------- tabs ----------

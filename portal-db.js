@@ -84,96 +84,147 @@
   }
 
   // ------------------------------------------------------------------- seed --
-  // Same records the dashboard used to seed inline, so existing demo sessions
-  // keep the data they already have. dashboard.html's seedDemo() checks the
-  // same flag and becomes a no-op once this has run.
+  // The portal starts EMPTY. There is no demo data and no built-in account:
+  // the first person to open the site creates the founder account, and every
+  // other member is added by that founder from the Team page.
+  //
+  // This mirrors the Supabase setup exactly (see supabase/SETUP.md), where the
+  // first user is promoted to founder and sign-ups are then closed.
   function seed(force) {
     if (!force && localStorage.getItem(SEED_FLAG) === '1') return;
 
-    var HOUR = 3600 * 1000;
-    var DAY = 24 * HOUR;
-    var now = Date.now();
-
-    write(K.users, [
-      {id:'u1', name:'Tej (Founder)',   email:'tej@xspace.co',     role:'founder', phone:'9000000101', photo:'', presence:'online', active:true, details:'Full portal access'},
-      {id:'u2', name:'Karthik (Core)',  email:'karthik@xspace.co', role:'core',    phone:'9000000102', photo:'', presence:'online', active:true, details:'Permission: Edit'},
-      {id:'u3', name:'Sai (Agent)',     email:'sai@xspace.co',     role:'agent',   phone:'9000000103', photo:'', presence:'away',   active:true, details:'Areas: Tellapur, Nallagandla | Types: Flats'},
-      {id:'u4', name:'Priya (Creator)', email:'priya@xspace.co',   role:'creator', phone:'9000000104', photo:'', presence:'online', active:true, details:'Platform: Instagram | Handle: @priya.realty'},
-      {id:'u5', name:'Studio Team',     email:'studio@xspace.co',  role:'studio',  phone:'9000000105', photo:'', presence:'online', active:true, details:'Role: Camera / VR | Availability: Mon-Sat'}
-    ]);
-
-    write(K.projects, [
-      {id:'p1', name:'MyHome Avatar', builder:'MyHome', rera:'P02200002975', status:'Under Construction', units:500},
-      {id:'p2', name:'Vasavi Skyla', builder:'Vasavi', rera:'P022000XXXXX', status:'Ready', units:120}
-    ]);
-
-    write(K.listings, [
-      {id:'l1', title:'2BHK Tellapur', projectId:'p1', area:'Tellapur', price:'1.15 Cr', unitType:'2BHK', status:'Available', verified:false, assignedAgent:'u3', submittedBy:'u3'},
-      {id:'l2', title:'3BHK Nallagandla', projectId:'p2', area:'Nallagandla', price:'1.9 Cr', unitType:'3BHK', status:'Ready', verified:true, assignedAgent:'u3', submittedBy:'u2'},
-      {id:'l3', title:'Standalone Apartment', projectId:'p1', area:'Miyapur', price:'68 L', unitType:'2BHK', status:'Available', verified:false, assignedAgent:'u4', submittedBy:'u4'}
-    ]);
-
-    write(K.leads, [
-      {id:'c1', name:'Ramesh', phone:'9000000001', source:'Instagram', budget:'1.5 Cr', status:'Discovery',  temperature:'hot',  assignedAgent:'u3', createdAt: now - HOUR,     listingId:'l1'},
-      {id:'c2', name:'Sita',   phone:'9000000002', source:'Referral',  budget:'2 Cr',   status:'Engaged',    temperature:'warm', assignedAgent:'u3', createdAt: now - DAY,      listingId:'l2'},
-      {id:'c3', name:'Rahul',  phone:'9000000003', source:'Website',   budget:'1.1 Cr', status:'Site Visit', temperature:'cold', assignedAgent:'u3', createdAt: now - 2 * HOUR, listingId:'l1'},
-      {id:'c4', name:'Anita',  phone:'9000000004', source:'Referral',  budget:'2.5 Cr', status:'Closed',     temperature:'hot',  assignedAgent:'u3', createdAt: now - 5 * DAY,  listingId:'l2'}
-    ]);
-
-    write(K.contributed, [
-      {id:'lc1', agentId:'u3', name:'Network - Reddy', createdAt: now - 5 * DAY},
-      {id:'lc2', agentId:'u3', name:'Friend - Mohan',  createdAt: now - 20 * DAY}
-    ]);
-
-    write(K.visits, [
-      {id:'v1', agentId:'u3', listingId:'l1', clientId:'c1', mode:'On-site', status:'Completed',   scheduledAt: now - DAY,          endedAt: now - DAY + HOUR,      feedbackSubmittedAt: now - DAY + HOUR + 10 * 60 * 1000},
-      {id:'v2', agentId:'u3', listingId:'l2', clientId:'c2', mode:'VR',      status:'Completed',   scheduledAt: now - 2 * DAY,      endedAt: now - 2 * DAY + HOUR,  feedbackSubmittedAt: now - 2 * DAY + HOUR + 45 * 60 * 1000},
-      {id:'v3', agentId:'u3', listingId:'l1', clientId:'c3', mode:'On-site', status:'Scheduled',   scheduledAt: now + 6 * HOUR,     endedAt: null,                  feedbackSubmittedAt: null}
-    ]);
-
-    write(K.submissions, [
-      {id:'ls1', agentId:'u3', listingId:'l3', title:'2BHK Gated Tellapur', createdAt: now - 6 * DAY,  firstPassApproved:true},
-      {id:'ls2', agentId:'u3', listingId:'l4', title:'3BHK Newbuild',       createdAt: now - 10 * DAY, firstPassApproved:false}
-    ]);
-
-    write(K.activity, [
-      {id:'a1', text:'Agent Sai added 2BHK Tellapur', time: now - HOUR},
-      {id:'a2', text:'Core Karthik verified project MyHome Avatar', time: now - 2 * HOUR}
-    ]);
-
-    write(K.notifications, [
-      {id:'n1', type:'approval', title:'Price change request — 3BHK Nallagandla', body:'Agent requested -5% price change', role:'founder', read:false, ts: now - 400000},
-      {id:'n2', type:'lead', title:'New lead: Ramesh', body:'Source: Instagram — budget 1.5 Cr', role:'agent', read:false, ts: now - 350000}
-    ]);
-
-    write(K.tickets, [
-      {id:'t1', title:'Price mismatch for 2BHK Tellapur', category:'listing', priority:'high',   raiser:'u3', status:'open', createdAt: now - 5 * HOUR},
-      {id:'t2', title:'Need RERA docs for MyHome Avatar', category:'legal',   priority:'medium', raiser:'u2', status:'open', createdAt: now - DAY}
-    ]);
-
-    write(K.verifications, [
-      {id:'ver1', listingId:'l1', projectId:'p1', type:'Listing', status:'pending',    assignedTo:null, createdAt: now - 6 * HOUR,  startedAt:null,               finishedAt:null,               notes:'Price check pending', escalated:false},
-      {id:'ver2', listingId:'l2', projectId:'p2', type:'Project', status:'inprogress', assignedTo:'u2', createdAt: now - 12 * HOUR, startedAt: now - 11 * HOUR,   finishedAt:null,               notes:'Verifying RERA',      escalated:false},
-      {id:'ver3', listingId:'l2', projectId:'p2', type:'Project', status:'verified',   assignedTo:'u2', createdAt: now - 48 * HOUR, startedAt: now - 47 * HOUR,   finishedAt: now - 46 * HOUR,   notes:'OK',                  escalated:false}
-    ]);
-
-    write(K.audit, [
-      {id:'ad1', text:'Listing l2 marked verified by u2', ts: now - 6 * HOUR},
-      {id:'ad2', text:'User u4 created content draft for p1', ts: now - 12 * HOUR}
-    ]);
-
-    write(K.commissions, [
-      {agent:'Sai',     agentId:'u3', pending:'₹45,000', paid:'₹1,20,000'},
-      {agent:'Karthik', agentId:'u2', pending:'₹10,000', paid:'₹55,000'}
-    ]);
-
-    write(K.studio, [
-      {id:'s1', title:'Project p1 — Drone Shoot', status:'Pending'},
-      {id:'s2', title:'Project p2 — Photography', status:'In Progress'},
-      {id:'s3', title:'Edit: p1 Walkthrough', status:'Pending'}
-    ]);
+    Object.keys(K).forEach(function (name) {
+      write(K[name], []);
+    });
 
     localStorage.setItem(SEED_FLAG, '1');
+  }
+
+  // Wipes every collection and signs out. Used by the founder's "Erase all
+  // data" control in the Database console.
+  function eraseAll() {
+    seed(true);
+    ['xspace_auth', 'xspace_role', 'xspace_user_id', 'xspace_user_name',
+     'xspace_user_email', 'xspace_remember_email'].forEach(function (k) {
+      localStorage.removeItem(k);
+    });
+  }
+
+  // ------------------------------------------------------------------- auth --
+  // DEMO AUTHENTICATION ONLY.
+  //
+  // Passwords are hashed with PBKDF2 rather than stored in the clear, which is
+  // better than nothing, but the hash still sits in the visitor's own browser
+  // and every check runs on their machine. This is NOT security — it stops a
+  // casual look, not a determined one. Supabase Auth replaces all of it.
+  var PBKDF2_ROUNDS = 120000;
+
+  function toHex(buffer) {
+    return Array.prototype.map.call(new Uint8Array(buffer), function (b) {
+      return ('00' + b.toString(16)).slice(-2);
+    }).join('');
+  }
+
+  function randomSalt() {
+    var a = new Uint8Array(16);
+    (global.crypto || global.msCrypto).getRandomValues(a);
+    return toHex(a);
+  }
+
+  function hashPassword(password, salt) {
+    var subtle = global.crypto && global.crypto.subtle;
+    if (!subtle) {
+      return Promise.reject(new Error(
+        'This browser cannot hash passwords securely. Open the site over ' +
+        'https:// or http://localhost.'
+      ));
+    }
+    var enc = new TextEncoder();
+    return subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits'])
+      .then(function (key) {
+        return subtle.deriveBits({
+          name: 'PBKDF2',
+          salt: enc.encode(salt),
+          iterations: PBKDF2_ROUNDS,
+          hash: 'SHA-256'
+        }, key, 256);
+      })
+      .then(toHex);
+  }
+
+  function hasAnyUser() {
+    return read(K.users).length > 0;
+  }
+
+  function findByEmail(email) {
+    var target = String(email || '').trim().toLowerCase();
+    var users = read(K.users);
+    for (var i = 0; i < users.length; i++) {
+      if ((users[i].email || '').toLowerCase() === target) return users[i];
+    }
+    return null;
+  }
+
+  // First-run only. Refuses to run once any account exists, so this cannot be
+  // used later to mint a second founder.
+  function createFounder(details) {
+    if (hasAnyUser()) {
+      return Promise.reject(new Error('This portal is already set up. Ask the founder to add your account.'));
+    }
+    var salt = randomSalt();
+    return hashPassword(details.password, salt).then(function (hash) {
+      var user = {
+        id: uid('u'),
+        name: details.name,
+        email: String(details.email).trim().toLowerCase(),
+        phone: details.phone || '',
+        role: 'founder',
+        details: 'Portal owner — full access',
+        photo: '',
+        presence: 'online',
+        active: true,
+        salt: salt,
+        passwordHash: hash,
+        createdAt: Date.now()
+      };
+      insert('users', user);
+      startSession(user);
+      audit('Founder account created for ' + user.email);
+      activity(user.name + ' set up the portal');
+      return user;
+    });
+  }
+
+  // Sets or resets a member's password. Founder-only at the call sites.
+  function setPassword(userId, password) {
+    var salt = randomSalt();
+    return hashPassword(password, salt).then(function (hash) {
+      return update('users', userId, { salt: salt, passwordHash: hash });
+    });
+  }
+
+  function signIn(email, password) {
+    var user = findByEmail(email);
+    if (!user || !user.passwordHash) {
+      // Same message either way — don't reveal which emails exist.
+      return Promise.reject(new Error('Incorrect email or password.'));
+    }
+    if (user.active === false) {
+      return Promise.reject(new Error('This account has been deactivated. Contact the founder.'));
+    }
+    return hashPassword(password, user.salt).then(function (hash) {
+      if (hash !== user.passwordHash) throw new Error('Incorrect email or password.');
+      startSession(user);
+      return user;
+    });
+  }
+
+  function startSession(user) {
+    localStorage.setItem('xspace_auth', '1');
+    localStorage.setItem('xspace_role', user.role);
+    localStorage.setItem('xspace_user_id', user.id);
+    localStorage.setItem('xspace_user_name', user.name);
+    localStorage.setItem('xspace_user_email', user.email);
   }
 
   // -------------------------------------------------------------- migration --
@@ -461,6 +512,12 @@
     COLLECTIONS: Object.keys(K),
 
     seed: seed,
+    eraseAll: eraseAll,
+    hasAnyUser: hasAnyUser,
+    findByEmail: findByEmail,
+    createFounder: createFounder,
+    setPassword: setPassword,
+    signIn: signIn,
     resetAll: resetAll,
     exportAll: exportAll,
     importAll: importAll,

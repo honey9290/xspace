@@ -87,7 +87,7 @@ td.val{max-width:280px;overflow:hidden;text-overflow:ellipsis;}
   <p class="sub">Full read/write access to every collection in the portal store. Founder only.</p>
 
   <div class="warn">
-    ⚠️ Direct store access — edits here take effect immediately across the whole portal and are not validated. Use <strong>Reset to seed</strong> to restore the demo data.
+    ⚠️ Direct store access — edits here take effect immediately across the whole portal and are not validated. Use <strong>Erase all data</strong> to start the portal over from scratch.
   </div>
 
   <div class="layout">
@@ -104,7 +104,7 @@ td.val{max-width:280px;overflow:hidden;text-overflow:ellipsis;}
           <button class="btn ghost" id="editJsonBtn">Edit as JSON</button>
           <button class="btn ghost" id="exportBtn">Export all</button>
           <button class="btn ghost" id="importBtn">Import</button>
-          <button class="btn ghost danger" id="resetBtn">Reset to seed</button>
+          <button class="btn ghost danger" id="resetBtn">Erase all data</button>
         </div>
       </div>
       <div class="table-wrap"><table><thead id="tableHead"></thead><tbody id="tableBody"></tbody></table></div>
@@ -340,9 +340,12 @@ td.val{max-width:280px;overflow:hidden;text-overflow:ellipsis;}
   });
 
   document.getElementById('resetBtn').addEventListener('click', function(){
-    if(!confirm('Reset every collection to the original demo seed? All changes will be lost.')) return;
-    XPortal.resetAll();
-    render();
+    if(!confirm('Erase EVERY record in the portal?\n\n' +
+                'This empties all collections and signs you out. You will be asked to ' +
+                'create the founder account again. This cannot be undone.')) return;
+    if(!confirm('Last check — permanently erase all portal data?')) return;
+    XPortal.eraseAll();
+    window.location.href = 'index.html';
   });
 
   render();
