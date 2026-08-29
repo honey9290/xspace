@@ -1,0 +1,2122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Xspace & Co. — Role-based Dashboard (Demo, patched)</title>
+  <meta name="description" content="Xspace role-based dashboard demo. Front-end permission locking; demo localStorage seed." />
+  <style>
+    /* -------------------------
+       BASIC THEME / LAYOUT
+       ------------------------- */
+    :root{
+      --bg: #0b0b0b;
+      --panel: #0f1720;
+      --muted: #9aa0a6;
+      --fg: #fff;
+      --accent: #10b981;
+      --danger: #ef4444;
+      --glass: rgba(255,255,255,0.03);
+      --radius: 12px;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      font-size: 14px;
+    }
+    [data-theme="light"]{
+      --bg:#ffffff;
+      --panel:#f7f8fb;
+      --muted:#556073;
+      --fg:#0b1220;
+      --glass: rgba(0,0,0,0.03);
+    }
+
+    html { transition: background-color .22s ease, color .22s ease; }
+    .kpi, .panel { transition: background-color .18s ease, border-color .18s ease; }
+
+    html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);-webkit-font-smoothing:antialiased;}
+    body{display:flex;height:100vh;overflow:hidden;}
+    .sr-only{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}
+
+    /* Sidebar */
+    .sidebar{
+      width:260px;
+      background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);
+      padding:20px;
+      box-sizing:border-box;
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+      border-right:1px solid rgba(255,255,255,0.04);
+      min-width:220px;
+    }
+    .brand{ font-size:20px; font-weight:700; }
+    .role-badge{ font-size:12px; color:var(--muted); margin-top:6px; }
+
+    .nav-list{ display:flex; flex-direction:column; gap:6px; margin-top:8px; }
+    .nav-item{
+      padding:10px 12px;
+      border-radius:8px;
+      cursor:pointer;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      font-size:15px;
+      user-select:none;
+    }
+    .nav-item:hover{ background:var(--glass); }
+    .nav-item.active{ background: rgba(255,255,255,0.04); font-weight:600; }
+
+    .sidebar .footer{ margin-top:auto; font-size:13px; color:var(--muted); }
+
+    /* main area */
+    .main{ flex:1; display:flex; flex-direction:column; min-width:0; }
+    .topbar{
+      display:flex; justify-content:space-between; align-items:center;
+      padding:12px 18px; border-bottom:1px solid rgba(255,255,255,0.03);
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), transparent);
+      gap:12px;
+    }
+    .top-left{ display:flex; gap:12px; align-items:center; }
+    .top-right{ display:flex; gap:10px; align-items:center; }
+
+    .workspace{ flex:1; overflow:auto; padding:18px; box-sizing:border-box; }
+
+    /* Daily Snapshot */
+    .kpi-strip{ display:flex; gap:12px; margin-bottom:14px; flex-wrap:wrap; align-items:stretch; }
+    .kpi{ flex:1 1 140px; min-width:130px; background:var(--panel); border-radius:10px; padding:12px; box-sizing:border-box; border:1px solid rgba(255,255,255,0.04); }
+    .kpi h3{ margin:0; font-size:13px; color:var(--muted); }
+    .kpi .num{ font-size:18px; font-weight:700; margin-top:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+    .layout{ display:grid; grid-template-columns: 1fr 360px; gap:14px; align-items:start; }
+    .panel{ background:var(--panel); border-radius:12px; padding:12px; box-sizing:border-box; border:1px solid rgba(255,255,255,0.03); overflow:hidden; }
+    .panel h4{ margin:0 0 10px 0; font-size:15px; }
+    .muted{ color:var(--muted); font-size:13px; }
+
+    /* Approvals list */
+    .approvals-list{ display:flex; flex-direction:column; gap:8px; }
+    .approval{ display:flex; justify-content:space-between; gap:8px; align-items:center; padding:10px; border-radius:8px; background: rgba(255,255,255,0.02); }
+    .approval .meta{ font-size:13px; color:var(--muted); }
+
+    /* Activity feed */
+    .activity{ display:flex; flex-direction:column; gap:8px; max-height:360px; overflow:auto; padding-right:6px; }
+    .activity-item{ padding:10px; border-radius:8px; background: rgba(255,255,255,0.02); display:flex; gap:10px; align-items:flex-start; }
+
+    /* Lead Funnel (pipeline) */
+    .lead-metrics{ display:flex; gap:10px; align-items:center; margin-top:6px; flex-wrap:wrap; }
+    .lead-metric{ background: rgba(255,255,255,0.02); padding:8px 10px; border-radius:8px; min-width:130px; }
+    .lead-metric h5{ margin:0; font-size:12px; color:var(--muted); }
+    .lead-metric .val{ font-weight:700; margin-top:6px; font-size:16px; }
+
+    .pipeline{ display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; -webkit-overflow-scrolling:touch; margin-top:10px; }
+    .pipeline-column{ flex:0 0 220px; min-width:200px; max-width:300px; background: rgba(255,255,255,0.02); border-radius:8px; padding:8px; box-sizing:border-box; }
+    .pipeline-column h5{ margin:0 0 8px 0; font-size:13px; color:var(--muted); }
+
+    /* Verification queue specifics */
+    .ver-row{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px; border-radius:8px; background: rgba(255,255,255,0.02); margin-bottom:8px; }
+    .ver-meta{ font-size:13px; color:var(--muted); }
+
+    /* Studio Journey */
+    .studio-tiles{ display:flex; flex-direction:column; gap:8px; }
+    .studio-tile{ padding:10px; border-radius:8px; background: rgba(255,255,255,0.02); }
+
+    /* Contact */
+    .contact-row{ display:flex; gap:8px; align-items:center; }
+    .contact-btn{ padding:8px 10px; border-radius:8px; background:transparent; color:var(--fg); border:1px solid rgba(255,255,255,0.06); cursor:pointer; }
+
+    /* Team list */
+    .team-list{ display:flex; flex-direction:column; gap:8px; }
+    .team-item{ display:flex; align-items:center; gap:10px; padding:8px; border-radius:8px; background: rgba(255,255,255,0.02); }
+    .presence-dot{ width:10px; height:10px; border-radius:50%; }
+
+    /* quick actions */
+    .btn{ padding:8px 12px; border-radius:8px; background:var(--fg); color:var(--bg); border:0; cursor:pointer; font-weight:600; }
+    .btn-ghost{ padding:8px 10px; border-radius:8px; background:transparent; color:var(--fg); border:1px solid rgba(255,255,255,0.06); cursor:pointer; }
+
+    /* small utilities */
+    .small{ font-size:13px; color:var(--muted); }
+    .search{ padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.04); background:transparent; color:var(--fg); min-width:260px; }
+
+    /* notification badge */
+    .badge{ background:var(--danger); color:white; padding:2px 7px; border-radius:999px; font-size:12px; }
+
+    /* modal */
+    .modal-backdrop{ position:fixed; inset:0; background:rgba(2,6,23,0.6); display:flex; align-items:center; justify-content:center; z-index:80; }
+    .modal{ width:720px; max-width:95%; background:var(--panel); border-radius:12px; padding:18px; box-sizing:border-box; border:1px solid rgba(255,255,255,0.04); }
+
+    /* profile mini */
+    .profile-mini{ display:flex; align-items:center; gap:10px; cursor:pointer; }
+    .avatar{ width:36px; height:36px; border-radius:50%; background:linear-gradient(120deg,#ccc,#999); display:inline-block; }
+
+    /* lead scope label */
+    .lead-scope{ display:inline-block; margin-left:8px; font-size:12px; color:var(--muted); background:rgba(255,255,255,0.02); padding:4px 8px; border-radius:8px; }
+
+    /* Agent panel specific layout tweaks */
+    .agent-panel .kpi-grid{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+    .agent-stats{ display:flex; flex-direction:column; gap:8px; }
+    .small-muted-row{ display:flex; justify-content:space-between; align-items:center; gap:8px; }
+
+    /* responsive */
+    @media (max-width:1000px){
+      .layout{ grid-template-columns: 1fr; }
+      .sidebar{ display:none; } /* compact mobile behaviour for demo */
+      .search{ min-width:140px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- === Guard: require login (front-end demo). Use ?dev=1 to bypass role requirement during development. === -->
+<script>
+  (function(){
+    const DEV = new URL(window.location.href).searchParams.get('dev');
+    if(DEV) return; // dev mode: skip guard (we still require auth for demo seed convenience)
+    const auth = localStorage.getItem('xspace_auth');
+    if(!auth || auth !== '1'){
+      // not logged in -> redirect to login
+      window.location.href = 'index.html';
+    }
+  })();
+</script>
+
+<!-- SIDEBAR -->
+<nav class="sidebar" aria-label="Main navigation">
+  <div>
+    <div class="brand">Xspace &amp; Co.</div>
+    <div class="role-badge" id="sidebarRole">Role: —</div>
+  </div>
+
+  <div class="nav-list" id="navList">
+    <!-- injected by JS -->
+  </div>
+
+  <div class="footer small">© Xspace & Co.</div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- TOPBAR -->
+  <header class="topbar" role="banner">
+    <div class="top-left">
+      <div style="font-size:15px;">Welcome back, <strong id="topRoleLabel">—</strong></div>
+      <input class="search" id="globalSearch" placeholder="Search listings, projects, clients..." />
+    </div>
+
+    <div class="top-right">
+      <!-- Dev role switcher visible when ?dev=1 -->
+      <select id="devRole" title="Dev role switcher (dev only)" style="display:none; padding:8px; border-radius:8px;">
+        <option value="">Quick role (dev)</option>
+        <option value="founder">Founder</option>
+        <option value="core">Core</option>
+        <option value="agent">Agent</option>
+        <option value="creator">Creator</option>
+        <option value="studio">Studio</option>
+      </select>
+
+      <!-- Contact Core (agents only) -->
+      <button id="contactCoreBtn" class="btn-ghost" title="Contact Core Team" style="display:none;">📞 Contact Core</button>
+
+      <!-- THEME TOGGLE -->
+      <button id="themeToggle" class="btn-ghost" title="Toggle theme">🌙</button>
+
+      <button id="notifyBtn" class="btn-ghost" title="Notifications">🔔 <span id="notifyBadge" class="badge" style="display:none;margin-left:8px;">0</span></button>
+
+      <div id="profileMini" class="profile-mini" title="Profile (click)">
+        <div id="miniAvatar" class="avatar" aria-hidden="true"></div>
+        <div style="font-size:13px;" id="miniName">You</div>
+      </div>
+
+      <button id="logoutBtn" class="btn-ghost">Logout</button>
+    </div>
+  </header>
+
+  <!-- WORKSPACE -->
+  <main class="workspace" id="workspace">
+
+    <!-- Daily Snapshot -->
+    <section class="kpi-strip" id="dailySnapshot"></section>
+
+    <div class="layout">
+      <!-- left column -->
+      <div>
+
+        <!-- Approvals -->
+        <section class="panel" id="approvalsPanel" aria-labelledby="approvalsTitle">
+          <h4 id="approvalsTitle">Approvals</h4>
+          <div class="muted small">Items waiting for approval (Founder-only or escalations)</div>
+          <div class="approvals-list" id="approvalsList" style="margin-top:10px;"></div>
+        </section>
+
+        <!-- Quick actions -->
+        <section class="panel" id="quickActionsPanel" style="margin-top:12px;">
+          <h4>Quick Actions</h4>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+            <button class="btn" data-action="addProject">+ Add Project</button>
+            <button class="btn" data-action="addListing">+ Add Listing</button>
+            <button class="btn" data-action="inviteUser">Invite User</button>
+            <button class="btn" data-action="createVisit">Create Site Visit</button>
+            <button class="btn" data-action="verifyRera">Verify RERA</button>
+            <button class="btn-ghost" data-action="exportData">Export</button>
+          </div>
+        </section>
+
+        <!-- Activity Feed -->
+        <section class="panel" id="activityPanel" style="margin-top:12px;">
+          <h4>Recent Activity</h4>
+          <div class="muted small">Recent actions from your team</div>
+          <div class="activity" id="activityFeed" style="margin-top:10px;"></div>
+        </section>
+
+        <!-- === AGENT PANEL (NEW) === -->
+        <section class="panel agent-panel" id="agentPanel" style="margin-top:12px; display:none;">
+          <h4>Agent Dashboard</h4>
+          <div class="muted small">KPIs focused on assigned leads, visits, listings & feedback</div>
+
+          <!-- KPI grid for agent -->
+          <div class="kpi-grid" style="margin-top:10px;">
+            <div class="kpi">
+              <h3>Visits Completed (week)</h3>
+              <div class="num" id="agentVisitsCompleted">0</div>
+            </div>
+            <div class="kpi">
+              <h3>Conversions</h3>
+              <div class="num" id="agentConversions">0</div>
+            </div>
+            <div class="kpi">
+              <h3>Leads Contributed (mo)</h3>
+              <div class="num" id="agentLeadsContributed">0</div>
+            </div>
+            <div class="kpi">
+              <h3>Active Listings</h3>
+              <div class="num" id="agentActiveListings">0</div>
+            </div>
+            <div class="kpi">
+              <h3>Listing Quality (%)</h3>
+              <div class="num" id="agentListingQuality">0%</div>
+            </div>
+            <div class="kpi">
+              <h3>Avg Feedback Time (mins)</h3>
+              <div class="num" id="agentFeedbackVelocity">—</div>
+            </div>
+          </div>
+
+          <!-- Assigned leads breakdown -->
+          <div style="margin-top:10px;">
+            <h4 style="margin:0 0 8px 0;">Assigned Leads</h4>
+            <div class="muted small">Age buckets of assigned leads</div>
+            <div style="display:flex; gap:8px; margin-top:8px;">
+              <div class="lead-metric"><h5>0-3 days</h5><div class="val" id="leadAge_0_3">0</div></div>
+              <div class="lead-metric"><h5>4-7 days</h5><div class="val" id="leadAge_4_7">0</div></div>
+              <div class="lead-metric"><h5>8+ days</h5><div class="val" id="leadAge_8_plus">0</div></div>
+            </div>
+          </div>
+
+          <!-- Pipeline / assigned lead funnel -->
+          <div style="margin-top:12px;">
+            <h4 style="margin:0 0 8px 0;">Assigned Lead Funnel</h4>
+            <div id="agentPipeline" class="pipeline" style="margin-top:8px;"></div>
+          </div>
+
+          <!-- Scheduled visits queue -->
+          <div style="margin-top:12px;">
+            <h4 style="margin:0 0 8px 0;">Scheduled Visits (today / tomorrow)</h4>
+            <div id="agentScheduledVisits" style="margin-top:8px;"></div>
+          </div>
+
+          <!-- small supporting stats -->
+          <div style="margin-top:12px;">
+            <h4 style="margin:0 0 8px 0;">Other</h4>
+            <div class="small-muted-row"><div class="small muted">Lead Update Frequency (48h)</div><div id="agentLeadUpdateFreq" class="small muted">0%</div></div>
+            <div style="height:8px"></div>
+            <div class="small-muted-row"><div class="small muted">Scheduled vs Completed Visits</div><div id="agentVisitCompliance" class="small muted">0%</div></div>
+          </div>
+        </section>
+
+        <!-- Verification Queue (Core primary) -->
+        <section class="panel" id="verificationPanel" style="margin-top:12px;">
+          <h4>Verification Queue</h4>
+          <div class="muted small">Project / Legal / Listing verifications — Core Team workload</div>
+
+          <div style="display:flex; gap:8px; align-items:center; margin-top:10px;">
+            <label class="small" style="margin-right:6px;">Filter:</label>
+            <select id="verFilter" style="padding:6px; border-radius:8px;">
+              <option value="all">All</option>
+              <option value="pending">Pending</option>
+              <option value="inprogress">In Progress</option>
+              <option value="escalated">Escalated</option>
+              <option value="verified">Verified</option>
+            </select>
+            <div style="margin-left:auto; display:flex; gap:8px;">
+              <button id="exportVerCsv" class="btn-ghost">Export CSV</button>
+              <button id="seedVerBtn" class="btn-ghost">Seed Demo Verifications</button>
+            </div>
+          </div>
+
+          <div id="verificationList" style="margin-top:12px;"></div>
+        </section>
+
+        <!-- Support Ticket Inbox (Core) -->
+        <section class="panel" id="supportPanel" style="margin-top:12px;">
+          <h4>Support Ticket Inbox</h4>
+          <div class="muted small">Internal tickets from Agents / Creators / Studio</div>
+          <div style="margin-top:10px;">
+            <div class="small muted">Quick View: <span id="ticketQuickOpen">Open: 0</span> • <span id="ticketQuickHigh">High: 0</span></div>
+            <div style="margin-top:8px;" id="ticketList"></div>
+            <div style="margin-top:10px;"><button id="openTicketDash" class="btn-ghost">Open Ticket Dashboard</button></div>
+          </div>
+        </section>
+
+        <!-- Leads Awaiting Legal Go-Ahead -->
+        <section class="panel" id="leadsLegalPanel" style="margin-top:12px;">
+          <h4>Leads Awaiting Legal Go-Ahead</h4>
+          <div class="muted small">Filtered leads that require legal clearance before visits</div>
+          <div id="leadsAwaitingLegal" style="margin-top:10px;"></div>
+        </section>
+
+      </div>
+
+      <!-- right column -->
+      <aside>
+        <!-- Lead Funnel -->
+        <section class="panel" id="pipelinePanel" title="Lead Funnel — Pre-qualification Stage Analysis">
+          <h4>Lead Funnel <span id="leadScopeLabel" class="lead-scope">Leads shown: —</span></h4>
+          <div class="muted small">Pre-qualification Stage Analysis</div>
+
+          <!-- Metrics strip for Lead Funnel -->
+          <div class="lead-metrics" id="leadMetrics">
+            <div class="lead-metric" id="metricDiscovery">
+              <h5>Discovery → New leads (not yet qualified)</h5>
+              <div class="val" id="discoveryCount">0</div>
+            </div>
+
+            <div class="lead-metric" id="metricEngaged">
+              <h5>Engaged → Qualified leads (agent interaction)</h5>
+              <div class="val" id="engagedCount">0</div>
+            </div>
+
+            <div class="lead-metric" id="metricConversion">
+              <h5>Conversion Rate (D → E)</h5>
+              <div class="val" id="conversionRate">0%</div>
+            </div>
+          </div>
+
+          <!-- Pipeline columns (stages) -->
+          <div class="pipeline" id="pipelineColumns"></div>
+        </section>
+
+        <!-- Studio Journey -->
+        <section class="panel" id="studioPanel" style="margin-top:12px;">
+          <h4>Studio Journey</h4>
+          <div class="muted small">Shoots, edits and media uploads</div>
+          <div class="studio-tiles" id="studioTiles" style="margin-top:10px;"></div>
+        </section>
+
+        <!-- Team overview -->
+        <section class="panel" id="teamPanel" style="margin-top:12px;">
+          <h4>Team Overview</h4>
+          <div class="muted small">Quick access to team health & access</div>
+          <div style="margin-top:10px;" id="teamOverview"></div>
+        </section>
+
+        <!-- Projects snapshot -->
+        <section class="panel" id="projectsSnapshot" style="margin-top:12px;">
+          <h4>Projects Snapshot</h4>
+          <div id="projectsSnapshotInner" style="margin-top:8px;"></div>
+        </section>
+
+        <!-- Audit log -->
+        <section class="panel" id="auditPanel" style="margin-top:12px;">
+          <h4>Audit Log</h4>
+          <div class="muted small">Last important actions</div>
+          <div id="auditLog" style="margin-top:8px; max-height:160px; overflow:auto;"></div>
+        </section>
+
+      </aside>
+    </div>
+
+  </main>
+</div>
+
+<!-- === NOTIFICATION CENTER (modal) === -->
+<div id="notificationCenter" style="display:none;">
+  <div class="modal-backdrop" id="notifBackdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="notifTitle">
+      <h3 id="notifTitle">Notification Center</h3>
+      <div style="display:flex; gap:8px; margin-top:8px; align-items:center;">
+        <select id="notifFilter" style="padding:8px; border-radius:8px;">
+          <option value="all">All</option>
+          <option value="unread">Unread</option>
+          <option value="approvals">Approvals</option>
+          <option value="tickets">Tickets</option>
+          <option value="tasks">Tasks</option>
+        </select>
+        <div style="margin-left:auto;">
+          <button id="markAllReadBtn" class="btn-ghost">Mark all read</button>
+          <button id="raiseTicketBtn" class="btn">Raise Query</button>
+          <button id="closeNotif" class="btn-ghost">Close</button>
+        </div>
+      </div>
+
+      <div id="notifList" style="margin-top:12px; max-height:420px; overflow:auto;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- === CONTACT CORE MODAL (agents only) === -->
+<div id="contactCoreModal" style="display:none;">
+  <div class="modal-backdrop" id="contactCoreBackdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="contactCoreTitle">
+      <h3 id="contactCoreTitle">Contact Core Team</h3>
+
+      <div style="margin-top:12px;">
+        <div class="small muted">Quick contact options — Core Team will receive a notification / ticket when you send a message.</div>
+
+        <div style="display:flex; gap:10px; margin-top:12px;">
+          <button id="viewCoreContactsBtn" class="btn">View Core Contacts</button>
+          <button id="messageCoreBtn" class="btn">Send Message to Core</button>
+          <button id="closeContactCore" class="btn-ghost">Close</button>
+        </div>
+
+        <div id="coreContactInfo" style="margin-top:12px; display:none;">
+          <div style="padding:10px; border-radius:8px; background:rgba(255,255,255,0.02);">
+            <div><strong>Core Team</strong></div>
+            <div class="small muted">Karthik (Core) — +91 90000 00002 • karthik@xspace.co</div>
+            <div style="height:8px"></div>
+            <div class="small muted">If urgent, call directly. Otherwise use "Send Message" and Core will get a ticket.</div>
+          </div>
+        </div>
+
+        <div id="contactMessageForm" style="margin-top:12px; display:none;">
+          <label class="small">Message to Core</label><br>
+          <textarea id="contactCoreMessage" rows="4" style="width:100%; padding:8px; border-radius:8px;" placeholder="Describe the issue or request to Core team"></textarea>
+          <div style="display:flex; gap:8px; margin-top:8px; justify-content:flex-end;">
+            <button id="sendCoreMessage" class="btn">Send</button>
+            <button id="cancelCoreMessage" class="btn-ghost">Cancel</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- === TICKET MODAL === -->
+<div id="ticketModal" style="display:none;">
+  <div class="modal-backdrop" id="ticketBackdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ticketTitle">
+      <h3 id="ticketTitle">Raise a Query / Ticket</h3>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <div style="flex:1;">
+          <label class="small">Category</label><br>
+          <select id="ticketCategory" style="width:100%; padding:8px; border-radius:8px;">
+            <option value="listing">Listing</option>
+            <option value="legal">Legal</option>
+            <option value="visit">Visit</option>
+            <option value="media">Media / Studio</option>
+            <option value="payment">Payment / Commission</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div style="width:140px;">
+          <label class="small">Priority</label><br>
+          <select id="ticketPriority" style="width:100%; padding:8px; border-radius:8px;">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-top:10px;">
+        <label class="small">Title</label>
+        <input id="ticketTitleInput" style="width:100%; padding:8px; border-radius:8px;" placeholder="Brief title" />
+      </div>
+
+      <div style="margin-top:10px;">
+        <label class="small">Description</label>
+        <textarea id="ticketDesc" rows="5" style="width:100%; padding:8px; border-radius:8px;" placeholder="Describe the issue"></textarea>
+      </div>
+
+      <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px;">
+        <button id="ticketCreate" class="btn">Create Ticket</button>
+        <button id="ticketCancel" class="btn-ghost">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- === PROFILE MODAL === -->
+<div id="profileModal" style="display:none;">
+  <div class="modal-backdrop" id="profileBackdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+      <h3 id="profileTitle">Profile</h3>
+      <div style="display:flex; gap:12px; margin-top:8px;">
+        <div style="width:120px; text-align:center;">
+          <div id="profileAvatarLarge" style="width:100px;height:100px;border-radius:50%;background:#ddd;margin:auto;"></div>
+          <div style="margin-top:8px;"><button id="profileUpload" class="btn-ghost">Upload</button></div>
+        </div>
+        <div style="flex:1;">
+          <label class="small">Full name</label><br>
+          <input id="profileName" style="width:100%;padding:8px;border-radius:8px;" />
+          <div style="display:flex; gap:8px; margin-top:8px;">
+            <div style="flex:1;">
+              <label class="small">Email</label><br>
+              <input id="profileEmail" style="width:100%;padding:8px;border-radius:8px;" />
+            </div>
+            <div style="width:140px;">
+              <label class="small">Role</label><br>
+              <select id="profileRole" style="width:100%;padding:8px;border-radius:8px;">
+                <option value="founder">Founder</option>
+                <option value="core">Core</option>
+                <option value="agent">Agent</option>
+                <option value="creator">Creator</option>
+                <option value="studio">Studio</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:8px; margin-top:10px; align-items:center;">
+            <label class="small">Presence</label>
+            <select id="profilePresence" style="padding:8px;border-radius:8px;">
+              <option value="online">Online</option>
+              <option value="away">Away</option>
+              <option value="dnd">Do not disturb</option>
+            </select>
+            <div style="margin-left:auto;">
+              <button id="saveProfile" class="btn">Save</button>
+              <button id="closeProfile" class="btn-ghost">Close</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =======================
+     SCRIPTS (all client-side)
+     ======================= -->
+<script src="portal-db.js"></script>
+<script>
+/* ===========================================================
+   Role-based Dashboard Demo (patched)
+   - Role keys: founder, core, agent, creator, studio
+   - All data stored in localStorage for demo
+   - In prod: replace localStorage with API calls and server-side RBAC
+   - NOTE: Only agent dashboard additions + Contact Core + Agent Settings visibility were added.
+   =========================================================== */
+
+(function(){
+
+  // ---------- Utility / Seed ----------
+  const ROLE = (localStorage.getItem('xspace_role') || 'agent').toLowerCase();
+  const AUTH = localStorage.getItem('xspace_auth') === '1';
+  const DEV = new URL(window.location.href).searchParams.get('dev');
+
+  function seedDemo(){
+    if(localStorage.getItem('xspace_demo_seed') === '1') {
+      ensureUserIdForRole(); // keep consistent
+      return;
+    }
+    localStorage.setItem('xspace_demo_seed','1');
+
+    const users = [
+      {id:'u1', name:'Tej (Founder)', email:'tej@xspace.co', role:'founder', photo:'', presence:'online'},
+      {id:'u2', name:'Karthik (Core)', email:'karthik@xspace.co', role:'core', photo:'', presence:'online'},
+      {id:'u3', name:'Sai (Agent)', email:'sai@xspace.co', role:'agent', photo:'', presence:'away'},
+      {id:'u4', name:'Priya (Creator)', email:'priya@xspace.co', role:'creator', photo:'', presence:'online'},
+      {id:'u5', name:'Studio Team', email:'studio@xspace.co', role:'studio', photo:'', presence:'online'}
+    ];
+    localStorage.setItem('xspace_users', JSON.stringify(users));
+
+    const projects = [
+      {id:'p1', name:'MyHome Avatar', builder:'MyHome', rera:'P02200002975', status:'Under Construction', units:500},
+      {id:'p2', name:'Vasavi Skyla', builder:'Vasavi', rera:'P022000XXXXX', status:'Ready', units:120},
+    ];
+    localStorage.setItem('xspace_projects', JSON.stringify(projects));
+
+    const listings = [
+      {id:'l1', title:'2BHK Tellapur', projectId:'p1', area:'Tellapur', price:'1.15 Cr', unitType:'2BHK', status:'Available', verified:false, assignedAgent:'u3'},
+      {id:'l2', title:'3BHK Nallagandla', projectId:'p2', area:'Nallagandla', price:'1.9 Cr', unitType:'3BHK', status:'Ready', verified:true, assignedAgent:'u3'},
+    ];
+    localStorage.setItem('xspace_listings', JSON.stringify(listings));
+
+    const leads = [
+      {id:'c1', name:'Ramesh', phone:'9000000001', source:'Instagram', budget:'1.5 Cr', status:'Discovery', assignedAgent:'u3', createdAt: Date.now()-3600*1000, listingId:'l1'},
+      {id:'c2', name:'Sita', phone:'9000000002', source:'Referral', budget:'2 Cr', status:'Engaged', assignedAgent:'u3', createdAt: Date.now()-(3600*24*1000), listingId:'l2'},
+      {id:'c3', name:'Rahul', phone:'9000000003', source:'Website', budget:'1.1 Cr', status:'Site Visit', assignedAgent:'u3', createdAt: Date.now()-(3600*2*1000), listingId:'l1'},
+      // a closed conversion example
+      {id:'c4', name:'Anita', phone:'9000000004', source:'Referral', budget:'2.5 Cr', status:'Closed', assignedAgent:'u3', createdAt: Date.now()-(3600*24*1000*5), listingId:'l2'}
+    ];
+    localStorage.setItem('xspace_leads', JSON.stringify(leads));
+
+    // agent-contributed leads (counts and minimal data)
+    const leadsContributed = [
+      {id:'lc1', agentId:'u3', name:'Network - Reddy', createdAt: Date.now()-(3600*24*5)},
+      {id:'lc2', agentId:'u3', name:'Friend - Mohan', createdAt: Date.now()-(3600*24*20)}
+    ];
+    localStorage.setItem('xspace_leads_contributed', JSON.stringify(leadsContributed));
+
+    // visits dataset - each visit has agentId, listingId, clientId, scheduledAt, endedAt (if completed), feedbackSubmittedAt
+    const visits = [
+      {id:'v1', agentId:'u3', listingId:'l1', clientId:'c1', scheduledAt: Date.now()-(3600*24*1), endedAt: Date.now()-(3600*24*1)+3600*1000, feedbackSubmittedAt: Date.now()-(3600*24*1)+3600*1000 + (10*60*1000)}, // 10 min feedback
+      {id:'v2', agentId:'u3', listingId:'l2', clientId:'c2', scheduledAt: Date.now()-(3600*24*2), endedAt: Date.now()-(3600*24*2)+3600*1000, feedbackSubmittedAt: Date.now()-(3600*24*2)+3600*1000 + (45*60*1000)}, // 45 min feedback
+      {id:'v3', agentId:'u3', listingId:'l1', clientId:'c3', scheduledAt: Date.now() + (3600*1000*6), endedAt: null, feedbackSubmittedAt: null} // scheduled in future
+    ];
+    localStorage.setItem('xspace_visits', JSON.stringify(visits));
+
+    // listing submissions by agents - includes firstPassApproved boolean for quality calculation
+    const listingSubmissions = [
+      {id:'ls1', agentId:'u3', listingId:'l3', title:'2BHK Gated Tellapur', createdAt: Date.now()-(3600*24*6), firstPassApproved:true},
+      {id:'ls2', agentId:'u3', listingId:'l4', title:'3BHK Newbuild', createdAt: Date.now()-(3600*24*10), firstPassApproved:false}
+    ];
+    localStorage.setItem('xspace_listing_submissions', JSON.stringify(listingSubmissions));
+
+    const activity = [
+      {id:'a1', text:'Agent Sai added 2BHK Tellapur', time:Date.now()-3600*1000},
+      {id:'a2', text:'Core Karthik verified project MyHome Avatar', time:Date.now()-(3600*2*1000)},
+    ];
+    localStorage.setItem('xspace_activity', JSON.stringify(activity));
+
+    const notifications = [
+      {id:'n1', type:'approval', title:'Price change request — 3BHK Nallagandla', body:'Agent requested -5% price change', role:'founder', read:false, ts:Date.now()-400000},
+      {id:'n2', type:'lead', title:'New lead: Ramesh', body:'Source: Instagram — budget 1.5 Cr', role:'agent', read:false, ts:Date.now()-350000},
+    ];
+    localStorage.setItem('xspace_notifications', JSON.stringify(notifications));
+
+    // demo tickets
+    const tickets = [
+      {id:'t1', title:'Price mismatch for 2BHK Tellapur', category:'listing', priority:'high', raiser:'u3', status:'open', createdAt:Date.now()-(3600*5*1000)},
+      {id:'t2', title:'Need RERA docs for MyHome Avatar', category:'legal', priority:'medium', raiser:'u2', status:'open', createdAt:Date.now()-(3600*24*1000)}
+    ];
+    localStorage.setItem('xspace_tickets', JSON.stringify(tickets));
+
+    // new: demo verifications dataset (core)
+    const verifications = [
+      {id:'v1', listingId:'l1', projectId:'p1', type:'Listing', status:'pending', assignedTo:null, createdAt:Date.now()-(3600*6*1000), startedAt:null, finishedAt:null, notes:'Price check pending', escalated:false},
+      {id:'v2', listingId:'l2', projectId:'p2', type:'Project', status:'inprogress', assignedTo:'u2', createdAt:Date.now()-(3600*12*1000), startedAt:Date.now()-(3600*11*1000), finishedAt:null, notes:'Verifying RERA', escalated:false},
+      {id:'v3', listingId:'l2', projectId:'p2', type:'Project', status:'verified', assignedTo:'u2', createdAt:Date.now()-(3600*48*1000), startedAt:Date.now()-(3600*47*1000), finishedAt:Date.now()-(3600*46*1000), notes:'OK', escalated:false}
+    ];
+    localStorage.setItem('xspace_verifications', JSON.stringify(verifications));
+
+    const audit = [
+      {id:'ad1', text:'Listing l2 marked verified by u2', ts:Date.now()-(3600*6*1000)},
+      {id:'ad2', text:'User u4 created content draft for p1', ts:Date.now()-(3600*12*1000)}
+    ];
+    localStorage.setItem('xspace_audit', JSON.stringify(audit));
+
+    const commissions = [
+      {agent:'Sai', agentId:'u3', pending:'₹45,000', paid:'₹1,20,000'},
+      {agent:'Karthik', agentId:'u2', pending:'₹10,000', paid:'₹55,000'}
+    ];
+    localStorage.setItem('xspace_commissions', JSON.stringify(commissions));
+
+    const studio = [
+      {id:'s1', title:'Project p1 — Drone Shoot', status:'Pending'},
+      {id:'s2', title:'Project p2 — Photography', status:'In Progress'},
+      {id:'s3', title:'Edit: p1 Walkthrough', status:'Pending'}
+    ];
+    localStorage.setItem('xspace_studio', JSON.stringify(studio));
+
+    ensureUserIdForRole();
+  }
+
+  // ---------- Robust ensureUserIdForRole ----------
+  function ensureUserIdForRole(){
+    try {
+      const users = getJSON('xspace_users');
+      if(!Array.isArray(users) || users.length === 0){
+        console.warn('ensureUserIdForRole: no users found in localStorage');
+        return;
+      }
+      const roleFromSession = (localStorage.getItem('xspace_role') || ROLE || 'agent').toLowerCase();
+      const currentId = localStorage.getItem('xspace_user_id');
+      if(currentId){
+        const byId = users.find(u => u.id === currentId);
+        if(byId && (byId.role || '').toLowerCase() === roleFromSession){
+          return;
+        }
+      }
+      const match = users.find(u => (u.role || '').toLowerCase() === roleFromSession);
+      if(match){
+        localStorage.setItem('xspace_user_id', match.id);
+        setTimeout(()=> {
+          try {
+            if(window._xspace && typeof window._xspace.renderAll === 'function'){
+              window._xspace.renderAll();
+            }
+          } catch(e){ }
+        }, 50);
+        return;
+      }
+      const fallback = users[0];
+      if(fallback){
+        localStorage.setItem('xspace_user_id', fallback.id);
+        localStorage.setItem('xspace_role', fallback.role || 'agent');
+        setTimeout(()=> {
+          try {
+            if(window._xspace && typeof window._xspace.renderAll === 'function'){
+              window._xspace.renderAll();
+            }
+          } catch(e){ }
+        }, 50);
+      }
+    } catch(err){
+      console.error('ensureUserIdForRole: ERROR', err);
+    }
+  }
+
+  // ---------- Permission mapping ----------
+  // Module access and the label come from portal-db.js so the dashboard and the
+  // sub-pages can never disagree about what a role may open. Only the
+  // dashboard-specific action flags are declared here.
+  //
+  // Founder is the superuser: every module, every record, plus the raw Database
+  // console. 'inviteUser' is founder-only — adding team members is not
+  // delegated to Core.
+  const dashboardActions = {
+    founder: {
+      canApprove: true,
+      canInvite: true,
+      canImpersonate: true,
+      quickActionsAllowed:['addProject','addListing','inviteUser','createVisit','verifyRera','exportData']
+    },
+    core: {
+      canApprove: false,
+      canInvite: false,
+      canImpersonate: false,
+      quickActionsAllowed:['addListing','createVisit','verifyRera','exportData']
+    },
+    agent: {
+      canApprove: false,
+      canInvite: false,
+      canImpersonate: false,
+      quickActionsAllowed:['createVisit','exportData']
+    },
+    creator: {
+      canApprove: false,
+      canInvite: false,
+      canImpersonate: false,
+      quickActionsAllowed:['exportData']
+    },
+    studio: {
+      canApprove: false,
+      canInvite: false,
+      canImpersonate: false,
+      quickActionsAllowed:['exportData']
+    }
+  };
+
+  const roleConfig = {};
+  Object.keys(XPortal.ROLES).forEach(function(r){
+    roleConfig[r] = Object.assign(
+      { label: XPortal.ROLES[r].label, modules: XPortal.ROLES[r].modules.slice() },
+      dashboardActions[r] || {}
+    );
+  });
+
+  function getRole(){ return XPortal.role(); }
+  function hasModule(mod){ return XPortal.hasModule(mod); }
+  function isFounder(){ return XPortal.isFounder(); }
+  function canDo(action){ return XPortal.can(action); }
+
+  // ---------- UI binding & rendering ----------
+  const sidebarEl = document.getElementById('navList');
+  const sidebarRoleEl = document.getElementById('sidebarRole');
+  const topRoleLabel = document.getElementById('topRoleLabel');
+  const miniAvatar = document.getElementById('miniAvatar');
+  const miniNameEl = document.getElementById('miniName');
+  const notifyBtn = document.getElementById('notifyBtn');
+  const notifyBadge = document.getElementById('notifyBadge');
+  const notificationCenter = document.getElementById('notificationCenter');
+  const notifList = document.getElementById('notifList');
+  const notifBackdrop = document.getElementById('notifBackdrop');
+  const notifFilter = document.getElementById('notifFilter');
+  const notificationCenterRoot = document.getElementById('notificationCenter');
+  const dailySnapshotEl = document.getElementById('dailySnapshot');
+  const approvalsListEl = document.getElementById('approvalsList');
+  const activityFeedEl = document.getElementById('activityFeed');
+  const pipelineColumnsEl = document.getElementById('pipelineColumns');
+  const teamOverviewEl = document.getElementById('teamOverview');
+  const projectsSnapshotInnerEl = document.getElementById('projectsSnapshotInner');
+  const auditLogEl = document.getElementById('auditLog');
+  const devRole = document.getElementById('devRole');
+  const profileMini = document.getElementById('profileMini');
+  const profileModal = document.getElementById('profileModal');
+  const profileBackdrop = document.getElementById('profileBackdrop');
+  const profileName = document.getElementById('profileName');
+  const profileEmail = document.getElementById('profileEmail');
+  const profileRole = document.getElementById('profileRole');
+  const profilePresence = document.getElementById('profilePresence');
+  const profileAvatarLarge = document.getElementById('profileAvatarLarge');
+  const themeToggleBtn = document.getElementById('themeToggle');
+  const leadScopeLabel = document.getElementById('leadScopeLabel');
+
+  // Lead funnel metric elements
+  const discoveryCountEl = document.getElementById('discoveryCount');
+  const engagedCountEl = document.getElementById('engagedCount');
+  const conversionRateEl = document.getElementById('conversionRate');
+
+  // Agent elements (new)
+  const agentPanelEl = document.getElementById('agentPanel');
+  const agentVisitsCompletedEl = document.getElementById('agentVisitsCompleted');
+  const agentConversionsEl = document.getElementById('agentConversions');
+  const agentLeadsContributedEl = document.getElementById('agentLeadsContributed');
+  const agentActiveListingsEl = document.getElementById('agentActiveListings');
+  const agentListingQualityEl = document.getElementById('agentListingQuality');
+  const agentFeedbackVelocityEl = document.getElementById('agentFeedbackVelocity');
+  const leadAge0_3El = document.getElementById('leadAge_0_3');
+  const leadAge4_7El = document.getElementById('leadAge_4_7');
+  const leadAge8PlusEl = document.getElementById('leadAge_8_plus');
+  const agentPipelineEl = document.getElementById('agentPipeline');
+  const agentScheduledVisitsEl = document.getElementById('agentScheduledVisits');
+  const agentLeadUpdateFreqEl = document.getElementById('agentLeadUpdateFreq');
+  const agentVisitComplianceEl = document.getElementById('agentVisitCompliance');
+
+  // Contact Core elements
+  const contactCoreBtn = document.getElementById('contactCoreBtn');
+  const contactCoreModal = document.getElementById('contactCoreModal');
+  const contactCoreBackdrop = document.getElementById('contactCoreBackdrop');
+  const viewCoreContactsBtn = document.getElementById('viewCoreContactsBtn');
+  const messageCoreBtn = document.getElementById('messageCoreBtn');
+  const closeContactCoreBtn = document.getElementById('closeContactCore');
+  const coreContactInfo = document.getElementById('coreContactInfo');
+  const contactMessageForm = document.getElementById('contactMessageForm');
+  const cancelCoreMessageBtn = document.getElementById('cancelCoreMessage');
+  const sendCoreMessageBtn = document.getElementById('sendCoreMessage');
+  const contactCoreMessage = document.getElementById('contactCoreMessage');
+
+  function getJSON(key, fallback=[]){ try{ return JSON.parse(localStorage.getItem(key)) || fallback } catch(e){ return fallback }}
+  function setJSON(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+
+  // THEME: init from localStorage
+  (function initTheme(){
+    const saved = localStorage.getItem('xspace_theme');
+    if(saved === 'light') document.documentElement.setAttribute('data-theme','light');
+    else document.documentElement.removeAttribute('data-theme');
+    if(themeToggleBtn) themeToggleBtn.textContent = (saved === 'light') ? '☀️' : '🌙';
+  })();
+
+  if(themeToggleBtn){
+    themeToggleBtn.addEventListener('click', ()=>{
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      if(isLight){
+        document.documentElement.removeAttribute('data-theme');
+        localStorage.setItem('xspace_theme','dark');
+        themeToggleBtn.textContent = '🌙';
+      } else {
+        document.documentElement.setAttribute('data-theme','light');
+        localStorage.setItem('xspace_theme','light');
+        themeToggleBtn.textContent = '☀️';
+      }
+      window._xspace && window._xspace.renderAll && window._xspace.renderAll();
+    });
+  }
+
+  // --- helper to return leads visible to current role ---
+  // Founder is the only role with company-wide visibility ('data.viewAll').
+  // Every other role sees only the leads assigned to it.
+  function getLeadsForRole(){
+    return XPortal.scoped('leads', ['assignedAgent']);
+  }
+
+  // --- verifications helper ---
+  function getVerifications(){
+    return getJSON('xspace_verifications') || [];
+  }
+  function setVerifications(vs){ setJSON('xspace_verifications', vs); }
+
+  // Render sidebar based on role modules
+  function renderSidebar(){
+    const role = getRole();
+    const cfg = roleConfig[role];
+    if(sidebarRoleEl) sidebarRoleEl.textContent = 'Role: ' + (cfg ? cfg.label : role);
+    if(topRoleLabel) topRoleLabel.textContent = cfg ? cfg.label : role;
+
+    const currentUser = getCurrentUser();
+    if(miniNameEl) miniNameEl.textContent = (currentUser && currentUser.name) || (cfg && cfg.label) || 'You';
+
+    const items = [
+      {k:'dashboard', t:'🏠 Dashboard'},
+      {k:'listings', t:'📄 Listings'},
+      {k:'clients', t:'👥 Clients'},
+      {k:'visits', t:'📅 Site Visits'},
+      {k:'creator', t:'🎥 Creator Tools'},
+      {k:'projects', t:'📁 Projects'},
+      {k:'legal', t:'🔍 Legal Checks'},
+      {k:'team', t:'👥 Team'},
+      {k:'settings', t:'⚙️ Settings'},
+      {k:'database', t:'🗄️ Database'}
+    ];
+
+    sidebarEl.innerHTML = '';
+    items.forEach(it => {
+      if(!cfg.modules.includes(it.k)) return;
+      const div = document.createElement('div');
+      div.className = 'nav-item';
+      div.dataset.page = it.k;
+      div.textContent = it.t;
+      div.addEventListener('click', ()=> {
+        document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+        div.classList.add('active');
+        loadPage(it.k);
+      });
+      sidebarEl.appendChild(div);
+    });
+
+    setTimeout(()=> {
+      const first = document.querySelector('.nav-item');
+      if(first) first.click();
+      else loadPage('dashboard');
+    }, 50);
+  }
+
+  // Role-based visibility: show/hide panels & quick-action buttons
+  function applyRoleVisibility(){
+    const role = getRole();
+    const cfg = roleConfig[role] || roleConfig['agent'];
+
+    // hide global search for non-admin roles
+    const searchEl = document.getElementById('globalSearch');
+    if (searchEl) {
+      if (['agent','creator','studio'].includes(role)) searchEl.style.display = 'none';
+      else searchEl.style.display = 'inline-block';
+    }
+
+    // Panels mapping
+    const panels = [
+      {id:'approvalsPanel', showFor: ['founder']},
+      {id:'quickActionsPanel', showFor: cfg ? cfg.modules : []},
+      {id:'activityPanel', showFor: ['founder','core','agent','creator','studio']},
+      {id:'pipelinePanel', showFor: ['founder','core','agent','creator']},
+      {id:'studioPanel', showFor: ['founder','core','studio']},
+      // Company-wide rosters and records are founder-only.
+      {id:'teamPanel', showFor: ['founder']},
+      {id:'projectsSnapshot', showFor: ['founder','core']},
+      {id:'contactPanel', showFor: ['founder']},
+      {id:'auditPanel', showFor: ['founder']},
+      // new panels: verification, support, leadsLegal
+      {id:'verificationPanel', showFor: ['core','founder']},
+      {id:'supportPanel', showFor: ['core','founder']},
+      {id:'leadsLegalPanel', showFor: ['core','founder']},
+      {id:'financialPanel', showFor: ['founder']},
+      // agent-only panel (new)
+      {id:'agentPanel', showFor: ['agent']}
+    ];
+
+    panels.forEach(p=>{
+      const el = document.getElementById(p.id);
+      if(!el) return;
+      if(p.showFor.includes(role)) el.style.removeProperty('display');
+      else el.style.display = 'none';
+    });
+
+    // Quick action buttons: show only the ones allowed
+    const allowed = cfg.quickActionsAllowed || [];
+    document.querySelectorAll('[data-action]').forEach(btn=>{
+      const action = btn.getAttribute('data-action');
+      if(allowed.includes(action)) btn.style.removeProperty('display');
+      else btn.style.display = 'none';
+    });
+
+    // Contact Core button visibility: only for agents
+    if(contactCoreBtn){
+      if(getRole() === 'agent') contactCoreBtn.style.removeProperty('display');
+      else contactCoreBtn.style.display = 'none';
+    }
+
+    renderDailySnapshot();
+  }
+
+  // Render Daily Snapshot (Top KPIs) - core-focused when role === 'core'
+  function renderDailySnapshot(){
+    const role = getRole();
+    const leads = getLeadsForRole(); // scoped leads
+    const listings = getJSON('xspace_listings');
+    const projects = getJSON('xspace_projects');
+    const tickets = getJSON('xspace_tickets');
+    const verifications = getVerifications();
+
+    // counts using scoped leads
+    const leadsToday = leads.filter(l => (Date.now() - (l.createdAt || 0)) < 24*3600*1000).length;
+    const totalLeads = leads.length;
+    const conversions = leads.filter(l => (l.status || '').toLowerCase() === 'closed').length;
+
+    // Core-specific verification metrics
+    const verifiedToday = verifications.filter(v => v.status === 'verified' && v.finishedAt && (Date.now() - v.finishedAt) < 24*3600*1000).length;
+    // avg verification time (hrs)
+    const finished = verifications.filter(v => v.startedAt && v.finishedAt);
+    let avgHrs = '-';
+    if(finished.length){
+      const totalMs = finished.reduce((s, x)=> s + (x.finishedAt - x.startedAt), 0);
+      avgHrs = Math.round((totalMs / finished.length) / (3600*1000));
+      if(isNaN(avgHrs)) avgHrs = '-';
+    }
+
+    const pendingVerifications = verifications.filter(v => v.status === 'pending' || v.status === 'inprogress' || v.status === 'escalated').length;
+    const openTickets = (tickets || []).filter(t => t.status === 'open').length;
+
+    const activeListings = (role === 'agent' || role === 'creator')
+      ? getJSON('xspace_listings').filter(li=>li.assignedAgent === getCurrentUserId()).length
+      : getJSON('xspace_listings').length;
+
+    // Cards: adjust to role
+    let cards = [];
+    if(role === 'core'){
+      cards = [
+        {title:'Listings Verified Today', num: verifiedToday},
+        {title:'Avg Verification Time (hrs)', num: avgHrs},
+        {title:'Pending Verifications', num: pendingVerifications},
+        {title:'Leads Today', num: leadsToday},
+        {title:'Active Listings', num: activeListings},
+        {title:'Tickets Open', num: openTickets}
+      ];
+    } else if(role === 'agent'){
+      // Keep base agent snapshot small; detailed agent metrics live in Agent Panel
+      cards = [
+        {title:'Assigned Leads', num: totalLeads},
+        {title:'Visits Today', num: getVisitsTodayCount(true)},
+        {title:'Conversions', num: conversions},
+        {title:'Active Listings', num: activeListings}
+      ];
+    } else if(role === 'creator'){
+      cards = [
+        {title:'Content Posted (week)', num: 3},
+        {title:'Leads from Content', num: 2},
+        {title:'Scheduled Posts', num: 1},
+        {title:'Approvals Pending', num: 0}
+      ];
+    } else if(role === 'studio'){
+      cards = [
+        {title:'Shoots Today', num: 1},
+        {title:'Edits Pending', num: 2},
+        {title:'Assets Uploaded', num: 24},
+        {title:'Storage Used', num: '12GB'}
+      ];
+    } else {
+      cards = [
+        {title:'Leads Today', num: leadsToday},
+        {title:(role==='founder'||role==='core')? 'Leads (visible)' : 'Leads (assigned)', num: totalLeads},
+        {title:'Conversions', num: conversions},
+        {title:'Active Listings', num: activeListings},
+        {title:'Projects Live', num: projects.length},
+        {title:'Visits Today', num: getVisitsTodayCount()}
+      ];
+    }
+
+    if(dailySnapshotEl){
+      dailySnapshotEl.innerHTML = '';
+      cards.forEach(c => {
+        const d = document.createElement('div');
+        d.className = 'kpi';
+        d.innerHTML = `<h3>${c.title}</h3><div class="num">${c.num}</div>`;
+        dailySnapshotEl.appendChild(d);
+      });
+    }
+  }
+
+  function leadCountByStatus(status){
+    const leads = getJSON('xspace_leads');
+    if(!status) return leads.length;
+    return leads.filter(l => (l.status || '').toLowerCase() === (status || '').toLowerCase()).length;
+  }
+  function getVisitsTodayCount(onlyForAgent){
+    const visits = getJSON('xspace_visits') || [];
+    const today = new Date();
+    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+    const end = start + 24*3600*1000;
+    const role = getRole();
+    return visits.filter(v => {
+      if(v.scheduledAt >= start && v.scheduledAt < end){
+        if(onlyForAgent && role === 'agent') return v.agentId === getCurrentUserId();
+        return true;
+      }
+      return false;
+    }).length;
+  }
+
+  // Render Approvals (founder)
+  function renderApprovals(){
+    const notifications = getJSON('xspace_notifications');
+    const role = getRole();
+    const items = notifications.filter(n => n.type === 'approval' && (n.role === 'all' || n.role === role));
+    if(!approvalsListEl) return;
+    approvalsListEl.innerHTML = '';
+    if(items.length === 0){
+      approvalsListEl.innerHTML = '<div class="small muted">No approvals pending.</div>';
+      return;
+    }
+    items.forEach(it => {
+      const div = document.createElement('div');
+      div.className = 'approval';
+      div.innerHTML = `<div><strong>${it.title}</strong><div class="meta">${it.body}</div></div>
+        <div style="display:flex; gap:8px;"><button class="btn" data-approve="${it.id}">Approve</button><button class="btn-ghost" data-reject="${it.id}">Reject</button></div>`;
+      approvalsListEl.appendChild(div);
+    });
+    approvalsListEl.querySelectorAll('[data-approve]').forEach(btn=>{
+      btn.addEventListener('click', ()=> { handleApprove(btn.dataset.approve); });
+    });
+    approvalsListEl.querySelectorAll('[data-reject]').forEach(btn=>{
+      btn.addEventListener('click', ()=> { handleReject(btn.dataset.reject); });
+    });
+  }
+
+  function handleApprove(id){
+    const notifications = getJSON('xspace_notifications');
+    const idx = notifications.findIndex(n=>n.id===id);
+    if(idx>-1){
+      notifications[idx].read = true;
+      setJSON('xspace_notifications', notifications);
+      addAudit(`Approval ${notifications[idx].title} approved by ${getCurrentUser()?getCurrentUser().name:'me'}`);
+      renderAll();
+    }
+  }
+  function handleReject(id){
+    const notifications = getJSON('xspace_notifications');
+    const idx = notifications.findIndex(n=>n.id===id);
+    if(idx>-1){
+      notifications[idx].read = true;
+      setJSON('xspace_notifications', notifications);
+      addAudit(`Approval ${notifications[idx].title} rejected by ${getCurrentUser()?getCurrentUser().name:'me'}`);
+      renderAll();
+    }
+  }
+
+  // Activity feed
+  function renderActivity(){
+    if(!activityFeedEl) return;
+    const allActivity = getJSON('xspace_activity').slice().reverse();
+    const role = getRole();
+    let activity = allActivity;
+    if(role === 'agent'){
+      const me = getCurrentUser();
+      activity = allActivity.filter(a => (a.text || '').toLowerCase().includes((me && me.name.split(' ')[0].toLowerCase()) || ''));
+    }
+    activityFeedEl.innerHTML = '';
+    if(!activity.length){ activityFeedEl.innerHTML='<div class="small muted">No recent activity</div>'; return; }
+    activity.forEach(a=>{
+      const d = document.createElement('div');
+      d.className = 'activity-item';
+      d.innerHTML = `<div style="width:42px;"><div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(120deg,#222,#444)"></div></div>
+        <div><div style="font-size:13px;"><strong>${a.text}</strong></div><div class="small muted">${timeAgo(a.time)}</div></div>`;
+      activityFeedEl.appendChild(d);
+    });
+  }
+
+  // --------------------------
+  // Agent dashboard rendering (NEW)
+  // --------------------------
+  function renderAgentPanel(){
+    if(!agentPanelEl) return;
+    const meId = getCurrentUserId();
+    if(!meId) { agentPanelEl.style.display = 'none'; return; }
+    // ensure panel visible only for agent
+    if(getRole() !== 'agent'){ agentPanelEl.style.display = 'none'; return; }
+    agentPanelEl.style.removeProperty('display');
+
+    // Visits
+    const visits = getJSON('xspace_visits') || [];
+    const myVisits = visits.filter(v => v.agentId === meId);
+    // visits completed in last 7 days
+    const oneWeek = Date.now() - (7*24*3600*1000);
+    const visitsCompleted = myVisits.filter(v => v.endedAt && v.endedAt >= oneWeek).length;
+    if(agentVisitsCompletedEl) agentVisitsCompletedEl.textContent = visitsCompleted;
+
+    // Conversions (leads assigned to me with status 'Closed' or 'closed')
+    const myLeads = getLeadsForRole();
+    const conversions = myLeads.filter(l => (l.status || '').toLowerCase() === 'closed').length;
+    if(agentConversionsEl) agentConversionsEl.textContent = conversions;
+
+    // Leads contributed (monthly)
+    const contributed = getJSON('xspace_leads_contributed') || [];
+    const thisMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
+    const myContrib = contributed.filter(c => c.agentId === meId && c.createdAt >= thisMonthStart).length;
+    if(agentLeadsContributedEl) agentLeadsContributedEl.textContent = myContrib;
+
+    // Active & Pending Listings assigned to me
+    const listings = getJSON('xspace_listings') || [];
+    const myActive = listings.filter(l => l.assignedAgent === meId && (l.status || '').toLowerCase() !== 'archived').length;
+    if(agentActiveListingsEl) agentActiveListingsEl.textContent = myActive;
+
+    // Listing submission quality
+    const subs = getJSON('xspace_listing_submissions') || [];
+    const mySubs = subs.filter(s => s.agentId === meId);
+    let qualityPct = 0;
+    if(mySubs.length){
+      const firstPass = mySubs.filter(s => s.firstPassApproved).length;
+      qualityPct = Math.round((firstPass / mySubs.length) * 100);
+    }
+    if(agentListingQualityEl) agentListingQualityEl.textContent = qualityPct + '%';
+
+    // Feedback submission velocity (avg minutes from endedAt -> feedbackSubmittedAt) for completed visits
+    const completedVisits = myVisits.filter(v => v.endedAt && v.feedbackSubmittedAt);
+    let avgFeedbackMin = '—';
+    if(completedVisits.length){
+      const totalMs = completedVisits.reduce((s, v) => s + (v.feedbackSubmittedAt - v.endedAt), 0);
+      avgFeedbackMin = Math.round((totalMs / completedVisits.length) / (60*1000));
+    }
+    if(agentFeedbackVelocityEl) agentFeedbackVelocityEl.textContent = (avgFeedbackMin === '—' ? '—' : avgFeedbackMin + 'm');
+
+    // Assigned lead age buckets
+    const now = Date.now();
+    const a0_3 = myLeads.filter(l => (now - (l.createdAt || now)) <= (3*24*3600*1000)).length;
+    const a4_7 = myLeads.filter(l => (now - (l.createdAt || now)) > (3*24*3600*1000) && (now - (l.createdAt || now)) <= (7*24*3600*1000)).length;
+    const a8 = myLeads.filter(l => (now - (l.createdAt || now)) > (7*24*3600*1000)).length;
+    if(leadAge0_3El) leadAge0_3El.textContent = a0_3;
+    if(leadAge4_7El) leadAge4_7El.textContent = a4_7;
+    if(leadAge8PlusEl) leadAge8PlusEl.textContent = a8;
+
+    // Assigned lead funnel (Discovery/Engaged/Site Visit/Decision/Closed)
+    if(agentPipelineEl) {
+      agentPipelineEl.innerHTML = '';
+      const stages = ['Discovery','Engaged','Site Visit','Decision','Closed'];
+      stages.forEach(s => {
+        const col = document.createElement('div');
+        col.className = 'pipeline-column';
+        const items = myLeads.filter(l => ((l.status || 'Discovery').toLowerCase() === s.toLowerCase()));
+        col.innerHTML = `<h5>${s} (${items.length})</h5>`;
+        items.forEach(it=>{
+          const el = document.createElement('div');
+          el.style.padding='8px'; el.style.marginTop='6px'; el.style.borderRadius='6px'; el.style.background='rgba(255,255,255,0.02)';
+          el.innerHTML = `<strong>${it.name}</strong><div class="small muted">${it.source} • ${it.budget}</div>`;
+          col.appendChild(el);
+        });
+        agentPipelineEl.appendChild(col);
+      });
+    }
+
+    // Scheduled visits (today + tomorrow) for this agent
+    if(agentScheduledVisitsEl){
+      agentScheduledVisitsEl.innerHTML = '';
+      const visitsForMe = myVisits.filter(v => !v.endedAt && v.scheduledAt);
+      const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+      const tomorrowStart = new Date(todayStart.getTime() + (24*3600*1000));
+      const dayAfterStart = new Date(tomorrowStart.getTime() + (24*3600*1000));
+      const scheduled = visitsForMe.filter(v => v.scheduledAt >= todayStart.getTime() && v.scheduledAt < dayAfterStart.getTime());
+      if(scheduled.length === 0) agentScheduledVisitsEl.innerHTML = '<div class="small muted">No scheduled visits for today/tomorrow.</div>';
+      else {
+        scheduled.forEach(v=>{
+          const li = document.createElement('div');
+          li.className = 'ver-row';
+          const listing = listings.find(l => l.id === v.listingId) || {};
+          const client = (getJSON('xspace_leads') || []).find(c => c.id === v.clientId) || {};
+          li.innerHTML = `<div style="flex:1;"><strong>${listing.title || listing.name || 'Listing'}</strong><div class="small muted">${client.name || 'Client'} • ${new Date(v.scheduledAt).toLocaleString()}</div></div>
+            <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;"><div class="small muted">${v.scheduledAt ? timeAgo(v.scheduledAt) : ''}</div></div>`;
+          agentScheduledVisitsEl.appendChild(li);
+        });
+      }
+    }
+
+    // Lead update frequency: % of assigned leads with an interaction in last 48 hrs
+    const leadInteractions = getJSON('xspace_lead_interactions') || []; // possible dataset (not seeded always)
+    // fallback: consider leads that have lastInteractionAt property
+    const assignedLeads = myLeads;
+    const now48 = Date.now() - (48*3600*1000);
+    let updatedCount = 0;
+    assignedLeads.forEach(l => {
+      if((l.lastInteractionAt || 0) >= now48) updatedCount++;
+      else {
+        // check interactions dataset
+        const ints = leadInteractions.filter(i => i.leadId === l.id);
+        if(ints.some(i => i.ts >= now48)) updatedCount++;
+      }
+    });
+    const updatePct = assignedLeads.length ? Math.round((updatedCount / assignedLeads.length) * 100) : 0;
+    if(agentLeadUpdateFreqEl) agentLeadUpdateFreqEl.textContent = updatePct + '%';
+
+    // Visit compliance: scheduled vs completed in last 7 days
+    const scheduledLast7 = myVisits.filter(v => v.scheduledAt && v.scheduledAt >= oneWeek).length;
+    const completedLast7 = myVisits.filter(v => v.endedAt && v.endedAt >= oneWeek).length;
+    const compliancePct = scheduledLast7 ? Math.round((completedLast7 / scheduledLast7) * 100) : 0;
+    if(agentVisitComplianceEl) agentVisitComplianceEl.textContent = compliancePct + '%';
+  }
+
+  // --------------------------
+  // Verification Queue rendering and actions
+  // --------------------------
+  function renderVerificationQueue(filter='all'){
+    const listRoot = document.getElementById('verificationList');
+    if(!listRoot) return;
+    const verifications = getVerifications();
+    const listings = getJSON('xspace_listings');
+    const projects = getJSON('xspace_projects');
+    const role = getRole();
+    let items = verifications.slice().sort((a,b)=> (b.createdAt||0)-(a.createdAt||0));
+
+    if(filter && filter !== 'all'){
+      if(filter === 'pending') items = items.filter(i=> i.status === 'pending');
+      else if(filter === 'inprogress') items = items.filter(i=> i.status === 'inprogress');
+      else if(filter === 'escalated') items = items.filter(i=> i.escalated === true || i.status === 'escalated');
+      else if(filter === 'verified') items = items.filter(i=> i.status === 'verified');
+    }
+
+    listRoot.innerHTML = '';
+    if(items.length === 0){
+      listRoot.innerHTML = '<div class="small muted">No verifications match this filter.</div>';
+      return;
+    }
+
+    items.forEach(v=>{
+      const listing = listings.find(l=>l.id === v.listingId) || {};
+      const proj = projects.find(p=>p.id === v.projectId) || {};
+      const div = document.createElement('div');
+      div.className = 'ver-row';
+      div.innerHTML = `<div style="flex:1;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div><strong>${listing.title || proj.name || ('Verification ' + v.id)}</strong></div>
+            <div class="small muted">${v.type} • ${v.status}</div>
+          </div>
+          <div class="ver-meta">${proj.builder ? (proj.builder + ' • ' + (proj.rera||'No RERA')) : ''} <span style="margin-left:8px;">${v.notes || ''}</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
+          <div style="display:flex; gap:8px;">
+            ${v.status !== 'inprogress' && v.status !== 'verified' ? `<button class="btn" data-start="${v.id}">Start Verification</button>` : ''}
+            ${v.status === 'inprogress' ? `<button class="btn" data-mark="${v.id}">Mark Verified</button>` : ''}
+            ${v.status !== 'escalated' && v.status !== 'verified' ? `<button class="btn-ghost" data-escalate="${v.id}">Escalate to Legal</button>` : ''}
+          </div>
+          <div class="small muted">Created: ${timeAgo(v.createdAt)}</div>
+        </div>`;
+      listRoot.appendChild(div);
+    });
+
+    // wire up actions
+    listRoot.querySelectorAll('[data-start]').forEach(btn=>{
+      btn.addEventListener('click', ()=> startVerification(btn.dataset.start));
+    });
+    listRoot.querySelectorAll('[data-mark]').forEach(btn=>{
+      btn.addEventListener('click', ()=> markVerificationVerified(btn.dataset.mark));
+    });
+    listRoot.querySelectorAll('[data-escalate]').forEach(btn=>{
+      btn.addEventListener('click', ()=> escalateVerification(btn.dataset.escalate));
+    });
+  }
+
+  function startVerification(id){
+    const ver = getVerifications();
+    const idx = ver.findIndex(v=>v.id === id);
+    if(idx === -1) { alert('Verification not found'); return; }
+    if(!ver[idx].startedAt) ver[idx].startedAt = Date.now();
+    ver[idx].status = 'inprogress';
+    ver[idx].assignedTo = getCurrentUserId();
+    setVerifications(ver);
+    addAudit(`Verification ${id} started by ${getCurrentUser()?getCurrentUser().name:'user'}`);
+    renderAll();
+  }
+
+  function markVerificationVerified(id){
+    const ver = getVerifications();
+    const idx = ver.findIndex(v=>v.id === id);
+    if(idx === -1) { alert('Verification not found'); return; }
+    ver[idx].status = 'verified';
+    ver[idx].finishedAt = Date.now();
+    if(!ver[idx].startedAt) ver[idx].startedAt = Date.now();
+    setVerifications(ver);
+
+    if(ver[idx].listingId){
+      const listings = getJSON('xspace_listings');
+      const liIdx = listings.findIndex(l=>l.id === ver[idx].listingId);
+      if(liIdx > -1){
+        listings[liIdx].verified = true;
+        setJSON('xspace_listings', listings);
+      }
+    }
+
+    addAudit(`Verification ${id} marked VERIFIED by ${getCurrentUser()?getCurrentUser().name:'user'}`);
+    renderAll();
+  }
+
+  function escalateVerification(id){
+    const ver = getVerifications();
+    const idx = ver.findIndex(v=>v.id === id);
+    if(idx === -1) { alert('Verification not found'); return; }
+    ver[idx].escalated = true;
+    ver[idx].status = 'escalated';
+    setVerifications(ver);
+    const tickets = getJSON('xspace_tickets');
+    tickets.push({id:'t'+Date.now(), title:`Escalation: verification ${id}`, category:'legal', priority:'high', raiser:getCurrentUserId(), status:'open', createdAt:Date.now()});
+    setJSON('xspace_tickets', tickets);
+    addAudit(`Verification ${id} escalated to legal by ${getCurrentUser()?getCurrentUser().name:'user'}`);
+    renderAll();
+  }
+
+  // export verifications CSV (simple)
+  function exportVerificationsCsv(){
+    const vs = getVerifications();
+    if(!vs.length){ alert('No verifications to export'); return; }
+    const headers = ['id','type','status','listingId','projectId','assignedTo','createdAt','startedAt','finishedAt','escalated','notes'];
+    const rows = vs.map(v => headers.map(h => {
+      let val = v[h];
+      if(typeof val === 'number') return ''+val;
+      if(val === null || val === undefined) return '';
+      return (''+val).replace(/"/g,'""');
+    }).map(c => `"${c}"`).join(','));
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'verifications.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  // --------------------------
+  // Support Ticket Inbox rendering
+  // --------------------------
+  function renderSupportTickets(){
+    const tickets = getJSON('xspace_tickets') || [];
+    const list = document.getElementById('ticketList');
+    const quickOpen = document.getElementById('ticketQuickOpen');
+    const quickHigh = document.getElementById('ticketQuickHigh');
+    if(quickOpen) quickOpen.textContent = 'Open: ' + tickets.filter(t=> t.status === 'open').length;
+    if(quickHigh) quickHigh.textContent = 'High: ' + tickets.filter(t=> t.priority === 'high' && t.status === 'open').length;
+
+    if(!list) return;
+    list.innerHTML = '';
+    if(tickets.length === 0){
+      list.innerHTML = '<div class="small muted">No tickets</div>'; return;
+    }
+    tickets.slice().reverse().slice(0,6).forEach(t=>{
+      const div = document.createElement('div');
+      div.className = 'ver-row';
+      div.innerHTML = `<div style="flex:1;"><strong>${t.title}</strong><div class="small muted">${t.category} • ${t.priority}</div></div>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
+          <div class="small muted">${timeAgo(t.createdAt)}</div>
+          <div><button class="btn-ghost" data-open-ticket="${t.id}">Open</button></div>
+        </div>`;
+      list.appendChild(div);
+    });
+    list.querySelectorAll('[data-open-ticket]').forEach(btn=>{
+      btn.addEventListener('click', ()=> alert('Open ticket (demo): ' + btn.dataset.openTicket));
+    });
+  }
+
+  // Leads Awaiting Legal Go-Ahead (simple filter)
+  function renderLeadsAwaitingLegal(){
+    const leads = getJSON('xspace_leads') || [];
+    const listings = getJSON('xspace_listings') || [];
+    const container = document.getElementById('leadsAwaitingLegal');
+    if(!container) return;
+    const awaiting = leads.filter(l => {
+      const li = listings.find(x=> x.id === l.listingId) || {};
+      return li && li.verified === false;
+    });
+    container.innerHTML = '';
+    if(awaiting.length === 0){
+      container.innerHTML = '<div class="small muted">No leads awaiting legal go-ahead.</div>'; return;
+    }
+    awaiting.forEach(ld=>{
+      const div = document.createElement('div');
+      div.className = 'ver-row';
+      div.innerHTML = `<div style="flex:1;"><strong>${ld.name}</strong><div class="small muted">${ld.source} • ${ld.budget}</div></div>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
+          <button class="btn" data-legal-clear="${ld.id}">Mark Legal Cleared</button>
+        </div>`;
+      container.appendChild(div);
+    });
+    container.querySelectorAll('[data-legal-clear]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const leadId = btn.dataset.legalClear;
+        const leadsAll = getJSON('xspace_leads');
+        const lead = leadsAll.find(l => l.id === leadId);
+        if(!lead){ alert('Lead not found'); return; }
+        const listingsAll = getJSON('xspace_listings');
+        const li = listingsAll.find(l => l.assignedAgent === lead.assignedAgent && l.verified === false);
+        if(!li){ alert('No matching unverified listing found to mark cleared (demo).'); return; }
+        li.verified = true;
+        setJSON('xspace_listings', listingsAll);
+        addAudit(`Lead ${lead.name} legal cleared by ${getCurrentUser()?getCurrentUser().name:'user'}`);
+        renderAll();
+      });
+    });
+  }
+
+  // Pipeline (Lead Funnel) - uses getLeadsForRole() so scope enforced, updates metric strip
+  function renderPipeline(){
+    const stages = ['Discovery','Engaged','Site Visit','Decision','Closed'];
+    if(!pipelineColumnsEl) return;
+    pipelineColumnsEl.innerHTML = '';
+    const leads = getLeadsForRole();
+    const role = getRole();
+
+    const discoveryCount = (leads || []).filter(l => ((l.status || '').toLowerCase() === 'discovery')).length;
+    const engagedCount = (leads || []).filter(l => ((l.status || '').toLowerCase() === 'engaged')).length;
+    let conv = 0;
+    if(discoveryCount > 0) conv = Math.round((engagedCount / discoveryCount) * 100);
+    else conv = 0;
+
+    if(discoveryCountEl) discoveryCountEl.textContent = discoveryCount;
+    if(engagedCountEl) engagedCountEl.textContent = engagedCount;
+    if(conversionRateEl) conversionRateEl.textContent = conv + '%';
+
+    if(leadScopeLabel){
+      if(role === 'founder' || role === 'core') leadScopeLabel.textContent = 'Leads shown: ALL';
+      else if(role === 'agent' || role === 'creator') leadScopeLabel.textContent = 'Leads shown: ASSIGNED';
+      else leadScopeLabel.textContent = 'Leads shown: NONE';
+    }
+
+    stages.forEach(s=>{
+      const col = document.createElement('div');
+      col.className = 'pipeline-column';
+      const items = leads.filter(l => ((l.status || 'Discovery').toLowerCase() === s.toLowerCase()));
+      col.innerHTML = `<h5>${s} (${items.length})</h5>`;
+      items.forEach(it=>{
+        const el = document.createElement('div');
+        el.style.padding='8px'; el.style.marginTop='6px'; el.style.borderRadius='6px'; el.style.background='rgba(255,255,255,0.02)';
+        el.innerHTML = `<strong>${it.name}</strong><div class="small muted">${it.source} • ${it.budget}</div>`;
+        col.appendChild(el);
+      });
+      pipelineColumnsEl.appendChild(col);
+    });
+  }
+
+  // Studio Journey
+  function renderStudioJourney(){
+    const role = getRole();
+    const studioTiles = document.getElementById('studioTiles');
+    if(!studioTiles) return;
+    const data = getJSON('xspace_studio');
+    studioTiles.innerHTML = '';
+    if(data.length === 0){
+      studioTiles.innerHTML = '<div class="small muted">No studio tasks</div>';
+      return;
+    }
+    data.forEach(s=>{
+      const d = document.createElement('div');
+      d.className = 'studio-tile';
+      d.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;">
+        <div><strong>${s.title}</strong><div class="small muted">${s.status}</div></div>
+        <div><button class="btn-ghost" onclick="alert('Open studio item (demo)')">Open</button></div>
+      </div>`;
+      studioTiles.appendChild(d);
+    });
+  }
+
+  // Financial panel rendering (founder)
+  function renderFinancial(){
+    const salesEl = document.getElementById('finSales');
+    const revenueEl = document.getElementById('finRevenue');
+    const payoutsEl = document.getElementById('finPayouts');
+    const studioEl = document.getElementById('finStudio');
+    const commissionListEl = document.getElementById('commissionList');
+
+    const projects = getJSON('xspace_projects');
+    const listings = getJSON('xspace_listings');
+    const leads = getJSON('xspace_leads');
+
+    const sales = (listings.length * 1);
+    const revenue = '₹' + ((listings.length * 50) + 100) + ',000';
+    const payouts = '₹' + (listings.length * 10) + ',000';
+    const studioRev = '₹' + 12000;
+
+    if(salesEl) salesEl.textContent = sales;
+    if(revenueEl) revenueEl.textContent = revenue;
+    if(payoutsEl) payoutsEl.textContent = payouts;
+    if(studioEl) studioEl.textContent = studioRev;
+
+    const commissions = getJSON('xspace_commissions');
+    if(commissionListEl){
+      commissionListEl.innerHTML = '';
+      if(commissions.length === 0){
+        commissionListEl.innerHTML = '<div class="small muted">No commission data</div>';
+      } else {
+        commissions.forEach(c=>{
+          const row = document.createElement('div');
+          row.style.display='flex'; row.style.justifyContent='space-between'; row.style.alignItems='center';
+          row.innerHTML = `<div><strong>${c.agent}</strong><div class="small muted">Paid ${c.paid} • Pending ${c.pending}</div></div>
+            <div><button class="btn-ghost" onclick="alert('Open commission details (demo)')">Open</button></div>`;
+          commissionListEl.appendChild(row);
+        });
+      }
+    }
+  }
+
+  // Team Overview (founder/core)
+  function renderTeamOverview(){
+    const role = getRole();
+    if(!(role === 'founder' || role === 'core')) return;
+    const users = getJSON('xspace_users');
+    if(!teamOverviewEl) return;
+    teamOverviewEl.innerHTML = '';
+    const container = document.createElement('div');
+    container.style.display = 'flex';
+    container.style.flexDirection = 'column';
+    container.style.gap = '8px';
+    users.forEach(u=>{
+      const div = document.createElement('div');
+      div.className = 'team-item';
+      div.innerHTML = `
+        <div style="width:42px;"><div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(120deg,#666,#333)"></div></div>
+        <div style="flex:1;">
+          <strong>${u.name}</strong>
+          <div class="small muted">${u.email}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="small muted">${u.role}</div>
+          <div class="small muted">${u.presence}</div>
+        </div>
+      `;
+      container.appendChild(div);
+    });
+    teamOverviewEl.appendChild(container);
+  }
+
+  // Projects snapshot (founder/core)
+  function renderProjectsSnapshot(){
+    const role = getRole();
+    if(!(role === 'founder' || role === 'core')) return;
+    const projects = getJSON('xspace_projects');
+    if(!projectsSnapshotInnerEl) return;
+    projectsSnapshotInnerEl.innerHTML = '';
+    projects.forEach(p=>{
+      const div = document.createElement('div');
+      div.className = 'project-item';
+      div.style.marginBottom='8px';
+      div.innerHTML = `<div><strong>${p.name}</strong><div class="small muted">${p.builder} • ${p.status} • ${p.units} units</div></div>
+        <div><button class="btn-ghost" data-open-project="${p.id}">Open</button></div>`;
+      projectsSnapshotInnerEl.appendChild(div);
+    });
+    projectsSnapshotInnerEl.querySelectorAll('[data-open-project]').forEach(b=>{
+      b.addEventListener('click', ()=> alert('Open project details (demo)'));
+    });
+  }
+
+  // Audit log (founder)
+  function renderAuditLog(){
+    const role = getRole();
+    if(role !== 'founder') return;
+    const audit = getJSON('xspace_audit').slice().reverse();
+    if(!auditLogEl) return;
+    auditLogEl.innerHTML = '';
+    audit.forEach(a=>{
+      const div = document.createElement('div');
+      div.style.padding='8px'; div.style.borderRadius='6px'; div.style.background='rgba(255,255,255,0.02); margin-bottom:6px;';
+      div.innerHTML = `<div style="font-size:13px">${a.text}</div><div class="small muted">${timeAgo(a.ts)}</div>`;
+      auditLogEl.appendChild(div);
+    });
+  }
+
+  // Notifications (filtered by role)
+  // One visibility rule, shared by the list and the badge — they used to
+  // disagree, so a notification with no `role` showed in the list but was never
+  // counted. The founder sees every notification, matching 'data.viewAll'.
+  function notificationsForMe(){
+    const role = getRole();
+    return getJSON('xspace_notifications').filter(n => {
+      if(isFounder()) return true;
+      if(!n.role) return true;
+      return n.role === role || n.role === 'all';
+    });
+  }
+
+  function renderNotifications(filter='all'){
+    let items = notificationsForMe().slice().reverse();
+
+    if(filter === 'unread') items = items.filter(i=>!i.read);
+    if(filter === 'approvals') items = items.filter(i=>i.type==='approval');
+    if(filter === 'tickets') items = items.filter(i=>i.type==='ticket');
+    if(filter === 'tasks') items = items.filter(i=>i.type==='task');
+
+    if(!notifList) return;
+    notifList.innerHTML = '';
+    if(items.length === 0){
+      notifList.innerHTML = '<div class="small muted">No notifications</div>';
+      return;
+    }
+
+    items.forEach(n => {
+      // Built with textContent, not innerHTML: titles and bodies come from
+      // ticket text a user typed, so interpolating them as HTML would let a
+      // crafted ticket run script in someone else's dashboard.
+      const d = document.createElement('div');
+      d.style.padding='10px'; d.style.borderRadius='8px'; d.style.marginBottom='8px';
+      d.style.background = n.read ? 'rgba(255,255,255,0.02)' : 'rgba(16,185,129,0.08)';
+
+      const row = document.createElement('div');
+      row.style.display='flex'; row.style.justifyContent='space-between'; row.style.alignItems='center'; row.style.gap='10px';
+
+      const left = document.createElement('div');
+      const title = document.createElement('strong');
+      title.textContent = n.title || '(untitled)';
+      const body = document.createElement('div');
+      body.className = 'small muted';
+      body.textContent = n.body || '';
+      left.appendChild(title); left.appendChild(body);
+
+      const time = document.createElement('div');
+      time.className = 'small muted';
+      time.style.whiteSpace = 'nowrap';
+      time.textContent = timeAgo(n.ts);
+
+      row.appendChild(left); row.appendChild(time);
+      d.appendChild(row);
+      notifList.appendChild(d);
+    });
+  }
+
+  function renderNotifBadge(){
+    const unread = notificationsForMe().filter(n => !n.read).length;
+    if(notifyBadge){
+      if(unread>0){ notifyBadge.style.display='inline-block'; notifyBadge.textContent = unread; }
+      else notifyBadge.style.display = 'none';
+    }
+  }
+
+  // Nothing ever cleared the badge: `read` was only set by Approve/Reject on the
+  // Approvals panel, so the bell's count was stuck permanently.
+  function markVisibleNotificationsRead(){
+    const mine = new Set(notificationsForMe().map(n => n.id));
+    const all = getJSON('xspace_notifications');
+    let changed = false;
+    all.forEach(n => {
+      if(mine.has(n.id) && !n.read){ n.read = true; changed = true; }
+    });
+    if(changed){
+      setJSON('xspace_notifications', all);
+      renderNotifBadge();
+    }
+    return changed;
+  }
+
+  // Ticket flow
+  function openTicketModal(){ const el=document.getElementById('ticketModal'); if(el) el.style.display = 'block'; }
+  function closeTicketModal(){ const el=document.getElementById('ticketModal'); if(el) el.style.display = 'none'; }
+  function createTicket(){
+    const categoryEl = document.getElementById('ticketCategory');
+    const priorityEl = document.getElementById('ticketPriority');
+    const titleEl = document.getElementById('ticketTitleInput');
+    const descEl = document.getElementById('ticketDesc');
+    const category = categoryEl ? categoryEl.value : 'other';
+    const priority = priorityEl ? priorityEl.value : 'medium';
+    const title = titleEl ? titleEl.value.trim() : '';
+    const desc = descEl ? descEl.value.trim() : '';
+    if(!title || !desc){ alert('Please enter title & description'); return; }
+    const tickets = getJSON('xspace_tickets');
+    const id = 't' + Date.now();
+    const t = {id, category, priority, title, desc, status:'open', raiser:getCurrentUserId(), createdAt: Date.now()};
+    tickets.push(t);
+    setJSON('xspace_tickets', tickets);
+    const notif = {id:'n'+Date.now(), type:'ticket', title: `Ticket: ${title}`, body: desc, role:'core', read:false, ts:Date.now()};
+    const notifs = getJSON('xspace_notifications'); notifs.push(notif); setJSON('xspace_notifications', notifs);
+    addAudit(`Ticket created: ${title} by ${getCurrentUser()?getCurrentUser().name:'user'}`);
+    renderAll();
+    closeTicketModal();
+    alert('Ticket created (demo).');
+  }
+
+  // Profile modal functions
+  function openProfileModal(){
+    const user = getCurrentUser();
+    if(user){
+      if(profileName) profileName.value = user.name;
+      if(profileEmail) profileEmail.value = user.email;
+      if(profileRole) profileRole.value = user.role;
+      if(profilePresence) profilePresence.value = user.presence || 'online';
+      const el=document.getElementById('profileModal'); if(el) el.style.display = 'block';
+    } else {
+      const el=document.getElementById('profileModal'); if(el) el.style.display = 'block';
+    }
+  }
+  function closeProfileModal(){ const el=document.getElementById('profileModal'); if(el) el.style.display = 'none'; }
+
+  function saveProfile(){
+    const users = getJSON('xspace_users');
+    const me = getCurrentUser();
+    if(!me) return;
+    const idx = users.findIndex(u=>u.id===me.id);
+    if(idx>-1){
+      users[idx].name = profileName.value;
+      users[idx].email = profileEmail.value;
+      users[idx].role = profileRole.value;
+      users[idx].presence = profilePresence.value;
+      setJSON('xspace_users', users);
+      addAudit(`Profile updated: ${users[idx].name}`);
+      // if role changed and this is the current user's record, update session role too
+      if(getRole() !== users[idx].role){
+        localStorage.setItem('xspace_role', users[idx].role);
+      }
+      renderAll();
+      closeProfileModal();
+    }
+  }
+
+  function addAudit(text){
+    const audit = getJSON('xspace_audit');
+    audit.push({id:'ad'+Date.now(), text, ts:Date.now()});
+    setJSON('xspace_audit', audit);
+  }
+
+  // ------------- FIXED: getCurrentUser / getCurrentUserId -------------
+  function getCurrentUser(){
+    const users = getJSON('xspace_users');
+    if(!users || users.length === 0) return null;
+    const id = localStorage.getItem('xspace_user_id');
+    if(id){
+      const u = users.find(x => x.id === id);
+      if(u) return u;
+    }
+    // fallback: find user by role and persist id for future
+    const role = getRole();
+    let found = users.find(x => (x.role || '').toLowerCase() === role);
+    if(!found) found = users[0];
+    if(found) {
+      localStorage.setItem('xspace_user_id', found.id);
+      return found;
+    }
+    return null;
+  }
+  function getCurrentUserId(){ return localStorage.getItem('xspace_user_id'); }
+
+  // time helper
+  function timeAgo(ts){ if(!ts) return ''; const s = Math.floor((Date.now()-ts)/1000); if(s<60) return s+'s ago'; const m = Math.floor(s/60); if(m<60) return m+'m ago'; const h = Math.floor(m/60); if(h<24) return h+'h ago'; const d = Math.floor(h/24); return d+'d ago'; }
+
+  // Modules that have a real page in this build. Anything not listed here
+  // is still a placeholder, so we say so instead of navigating to a 404.
+  const PAGE_ROUTES = {
+    listings: 'listings.html',
+    database: 'database.html',
+    clients:  'client.html',
+    visits:   'sitevisits.html',
+    team:     'teams.html'
+  };
+
+  const PAGE_LABELS = {
+    creator:   'Creator Tools',
+    projects:  'Projects',
+    legal:     'Legal Checks',
+    settings:  'Settings',
+    analytics: 'Analytics',
+    media:     'Media Library',
+    shoots:    'Shoots'
+  };
+
+  function loadPage(page){
+    if(!hasModule(page)){ alert('Access denied for this role to module: ' + page); return; }
+
+    if(page === 'dashboard'){
+      window.scrollTo(0,0);
+      return;
+    }
+
+    const route = PAGE_ROUTES[page];
+    if(route){
+      window.location.href = route;
+      return;
+    }
+
+    alert((PAGE_LABELS[page] || page) + ' is not built yet in this demo.');
+  }
+
+  // logout
+  const logoutBtn = document.getElementById('logoutBtn');
+  if(logoutBtn){
+    logoutBtn.addEventListener('click', ()=>{
+      localStorage.removeItem('xspace_auth');
+      localStorage.removeItem('xspace_role');
+      localStorage.removeItem('xspace_user_id');
+      window.location.href = 'index.html';
+    });
+  }
+
+  // notifications UI
+  if(notifyBtn){
+    notifyBtn.addEventListener('click', ()=> {
+      if(notificationCenterRoot) notificationCenterRoot.style.display = 'block';
+      renderNotifications(notifFilter ? notifFilter.value : 'all');
+      // Opening the centre counts as seeing them; clear the badge after a beat
+      // so the unread highlight is still visible when the panel appears.
+      setTimeout(()=>{ markVisibleNotificationsRead(); }, 1200);
+    });
+  }
+  const markAllReadBtn = document.getElementById('markAllReadBtn');
+  if(markAllReadBtn){
+    markAllReadBtn.addEventListener('click', ()=> {
+      markVisibleNotificationsRead();
+      renderNotifications(notifFilter ? notifFilter.value : 'all');
+    });
+  }
+
+  const closeNotifBtn = document.getElementById('closeNotif');
+  if(closeNotifBtn) closeNotifBtn.addEventListener('click', ()=> { if(notificationCenterRoot) notificationCenterRoot.style.display = 'none'; });
+  if(notifBackdrop) notifBackdrop.addEventListener('click', (e)=>{ if(e.target === notifBackdrop && notificationCenterRoot) notificationCenterRoot.style.display = 'none'; });
+  const raiseTicketBtn = document.getElementById('raiseTicketBtn');
+  if(raiseTicketBtn) raiseTicketBtn.addEventListener('click', ()=> openTicketModal());
+  const ticketCancel = document.getElementById('ticketCancel');
+  if(ticketCancel) ticketCancel.addEventListener('click', ()=> closeTicketModal());
+  const ticketCreateBtn = document.getElementById('ticketCreate');
+  if(ticketCreateBtn) ticketCreateBtn.addEventListener('click', ()=> createTicket());
+  const ticketBackdrop = document.getElementById('ticketBackdrop');
+  if(ticketBackdrop) ticketBackdrop.addEventListener('click', (e)=>{ if(e.target===ticketBackdrop) closeTicketModal(); });
+  if(profileMini) profileMini.addEventListener('click', ()=> openProfileModal());
+  const closeProfileBtn = document.getElementById('closeProfile');
+  if(closeProfileBtn) closeProfileBtn.addEventListener('click', ()=> closeProfileModal());
+  const saveProfileBtn = document.getElementById('saveProfile');
+  if(saveProfileBtn) saveProfileBtn.addEventListener('click', ()=> saveProfile());
+
+  // --------------------------
+  // Contact Core interactions (agents only)
+  // --------------------------
+  if(contactCoreBtn){
+    contactCoreBtn.addEventListener('click', ()=> {
+      if(contactCoreModal) contactCoreModal.style.display = 'block';
+      coreContactInfo.style.display = 'none';
+      contactMessageForm.style.display = 'none';
+      if(contactCoreMessage) contactCoreMessage.value = '';
+    });
+  }
+  if(contactCoreBackdrop) contactCoreBackdrop.addEventListener('click', (e)=> { if(e.target === contactCoreBackdrop) contactCoreModal.style.display = 'none'; });
+
+  if(viewCoreContactsBtn) viewCoreContactsBtn.addEventListener('click', ()=> {
+    coreContactInfo.style.display = (coreContactInfo.style.display === 'none' ? 'block' : 'none');
+    contactMessageForm.style.display = 'none';
+  });
+  if(messageCoreBtn) messageCoreBtn.addEventListener('click', ()=> {
+    contactMessageForm.style.display = 'block';
+    coreContactInfo.style.display = 'none';
+  });
+  if(closeContactCoreBtn) closeContactCoreBtn.addEventListener('click', ()=> { if(contactCoreModal) contactCoreModal.style.display = 'none'; });
+  if(cancelCoreMessageBtn) cancelCoreMessageBtn.addEventListener('click', ()=> { contactMessageForm.style.display = 'none'; });
+  if(sendCoreMessageBtn) sendCoreMessageBtn.addEventListener('click', ()=> {
+    const msg = contactCoreMessage ? contactCoreMessage.value.trim() : '';
+    if(!msg){ alert('Please enter a message'); return; }
+    // create an internal ticket routed to core
+    const tickets = getJSON('xspace_tickets');
+    const id = 't' + Date.now();
+    const t = {id, category:'internal_contact', priority:'medium', title:'Agent message to Core', desc: msg, status:'open', raiser:getCurrentUserId(), createdAt: Date.now()};
+    tickets.push(t);
+    setJSON('xspace_tickets', tickets);
+    const notifs = getJSON('xspace_notifications');
+    notifs.push({id:'n'+Date.now(), type:'ticket', title:`Agent message from ${getCurrentUser()?getCurrentUser().name:'Agent'}`, body: msg, role:'core', read:false, ts:Date.now()});
+    setJSON('xspace_notifications', notifs);
+    addAudit(`Agent message sent to Core: ${getCurrentUser()?getCurrentUser().name:'Agent'}`);
+    alert('Message sent to Core team (demo). A ticket has been created.');
+    if(contactCoreModal) contactCoreModal.style.display = 'none';
+    renderAll();
+  });
+
+  // dev role switcher (dev only) - sets both role and user id to keep header/profile consistent
+  if(DEV && devRole){
+    devRole.style.display = 'inline-block';
+    devRole.value = getRole();
+    devRole.addEventListener('change', (e)=> {
+      const chosen = e.target.value;
+      if(!chosen) return;
+      const users = getJSON('xspace_users');
+      const pick = users.find(u => u.role === chosen) || users[0];
+      if(pick){
+        localStorage.setItem('xspace_role', chosen);
+        localStorage.setItem('xspace_user_id', pick.id);
+      } else {
+        localStorage.setItem('xspace_role', chosen);
+        localStorage.removeItem('xspace_user_id');
+      }
+      renderAll();
+    });
+  }
+
+  // Quick actions behavior (respecting permissions)
+  document.querySelectorAll('[data-action]').forEach(btn=>{
+    btn.addEventListener('click', ()=> {
+      const action = btn.dataset.action;
+      const currentCfg = roleConfig[getRole()] || {};
+      if(!currentCfg.quickActionsAllowed || !currentCfg.quickActionsAllowed.includes(action)){
+        alert('You do not have permission to perform this action.');
+        return;
+      }
+      if(action === 'inviteUser'){
+        const email = prompt('Invite by email (demo):');
+        if(email) { alert('Invite sent (demo) to ' + email); addAudit(`Invite sent to ${email}`); renderAll(); }
+      } else if(action==='addProject'){
+        const name = prompt('Project name (demo):');
+        if(name){ const projects = getJSON('xspace_projects'); projects.push({id:'p'+Date.now(), name, builder:'Manual', rera:'', status:'Draft', units:0}); setJSON('xspace_projects', projects); addAudit(`Project ${name} created`); renderAll(); }
+      } else if(action==='addListing'){
+        const title = prompt('Listing title (demo):');
+        if(title){ const listings = getJSON('xspace_listings'); listings.push({id:'l'+Date.now(), title, projectId:'', area:'', price:'', unitType:'', status:'Available'}); setJSON('xspace_listings', listings); addAudit(`Listing ${title} created`); renderAll(); }
+      } else if(action === 'createVisit'){
+        alert('Create Visit (demo) - open visit modal (not implemented in Phase1 demo)');
+      } else if(action === 'verifyRera'){
+        alert('Open RERA verification (demo)');
+      } else if(action==='exportData'){
+        alert('Exporting data (demo) — CSV would be generated in production.');
+      }
+    });
+  });
+
+  // verification filter & export wiring
+  const verFilterEl = document.getElementById('verFilter');
+  if(verFilterEl) verFilterEl.addEventListener('change', (e)=> renderVerificationQueue(e.target.value));
+  const exportVerCsvBtn = document.getElementById('exportVerCsv');
+  if(exportVerCsvBtn) exportVerCsvBtn.addEventListener('click', exportVerificationsCsv);
+  const seedVerBtn = document.getElementById('seedVerBtn');
+  if(seedVerBtn) seedVerBtn.addEventListener('click', ()=>{
+    seedDemo(); // seed if not
+    alert('Demo verification data seeded (if not already).');
+    renderAll();
+  });
+
+  const openTicketDashBtn = document.getElementById('openTicketDash');
+  if(openTicketDashBtn) openTicketDashBtn.addEventListener('click', ()=> alert('Open Ticket Dashboard (demo)'));
+
+  // render everything
+  function renderAll(){
+    // ensure the user id is in place
+    ensureUserIdForRole();
+
+    renderSidebar();
+    applyRoleVisibility();
+    renderDailySnapshot();
+    renderApprovals();
+    renderActivity();
+    renderPipeline();
+    renderStudioJourney();
+    renderTeamOverview();
+    renderProjectsSnapshot();
+    renderAuditLog();
+
+    // agent panel
+    renderAgentPanel();
+
+    // render notifications safely (notifFilter may not exist yet)
+    renderNotifications(notifFilter ? notifFilter.value || 'all' : 'all');
+    renderNotifBadge();
+    renderVerificationQueue(verFilterEl ? verFilterEl.value || 'all' : 'all');
+    renderSupportTickets();
+    renderLeadsAwaitingLegal();
+
+    const me = getCurrentUser();
+    if(me && miniNameEl) miniNameEl.textContent = me.name;
+  }
+  seedDemo(); // initialize demo data once
+  renderAll();
+
+  if(notifFilter){
+    notifFilter.addEventListener('change', ()=> { renderNotifications(notifFilter.value); });
+  }
+
+  window._xspace = {
+    seedDemo,
+    renderAll,
+    getRole: getRole,
+    setRole: (r)=>{ 
+      const users = getJSON('xspace_users');
+      const pick = users.find(u => u.role === r) || users[0];
+      if(pick){
+        localStorage.setItem('xspace_role', r);
+        localStorage.setItem('xspace_user_id', pick.id);
+      } else {
+        localStorage.setItem('xspace_role', r);
+        localStorage.removeItem('xspace_user_id');
+      }
+      renderAll();
+    }
+  };
+
+  // final console note
+  console.log('Xspace dashboard patched loaded. Current role:', getRole(), 'User id:', getCurrentUserId(), 'Dev mode:', !!DEV);
+
+})(); // end main IIFE
+</script>
+</body>
+</html>

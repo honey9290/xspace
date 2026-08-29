@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Xspace &amp; Co | Site Visits</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+:root{
+  --bg:#0b0b0b;
+  --panel:#0f1720;
+  --fg:#fff;
+  --muted:#9aa0a6;
+  --border:rgba(255,255,255,0.08);
+  --accent:#10b981;
+  font-family: Inter, system-ui;
+}
+body{margin:0;background:var(--bg);color:var(--fg);}
+.container{padding:20px;}
+h1{margin:0 0 6px;}
+
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:14px;flex-wrap:wrap;}
+.filters{display:flex;gap:10px;flex-wrap:wrap;}
+select,input,button{
+  background:var(--panel);
+  color:var(--fg);
+  border:1px solid var(--border);
+  padding:8px 12px;
+  border-radius:8px;
+  font-size:14px;
+}
+button{cursor:pointer;}
+
+.today-strip{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:12px;
+  margin-bottom:20px;
+}
+.card{
+  background:var(--panel);
+  border-radius:12px;
+  padding:12px;
+  border:1px solid var(--border);
+}
+.card strong{font-size:14px;}
+.card .muted{font-size:12px;color:var(--muted);}
+
+.pipeline{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:12px;
+}
+@media (max-width:900px){ .pipeline{grid-template-columns:repeat(2,1fr);} }
+@media (max-width:560px){ .pipeline{grid-template-columns:1fr;} }
+.col{
+  background:rgba(255,255,255,0.03);
+  border-radius:12px;
+  padding:10px;
+  min-height:80px;
+}
+.col h3{margin:0 0 8px;font-size:14px;color:var(--muted);}
+.visit{
+  background:var(--panel);
+  padding:10px;
+  border-radius:10px;
+  margin-bottom:8px;
+  border:1px solid var(--border);
+  font-size:13px;
+}
+.hot{color:#ef4444}
+.warm{color:#f59e0b}
+.cold{color:#38bdf8}
+.soon{box-shadow:0 0 0 1px #f59e0b inset;}
+.overdue{box-shadow:0 0 0 1px #ef4444 inset;}
+.scope{color:var(--muted);font-size:12px;margin:0;}
+.col .none{color:var(--muted);font-size:12px;padding:4px;}
+
+#scheduleModal,#rescheduleModal,#unsuccessModal{
+  position:fixed;inset:0;background:rgba(0,0,0,.6);
+  display:none;align-items:center;justify-content:center;z-index:99;padding:20px;
+}
+.modal{
+  background:#0f1720;border-radius:12px;padding:16px;width:100%;max-width:360px;
+  border:1px solid rgba(255,255,255,.08);
+}
+.modal h3{margin:0 0 10px;font-size:16px;}
+.modal label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px;}
+.modal input,.modal select{width:100%;margin-bottom:10px;box-sizing:border-box;}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;}
+.action-btn{font-size:11px;padding:4px 8px;border-radius:999px;border:1px solid var(--border);margin-right:6px;background:transparent;color:var(--fg);cursor:pointer;}
+.action-btn:hover{background:rgba(255,255,255,.08);}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+  <div class="topbar">
+    <div>
+      <h1>Site Visits</h1>
+      <div style="color:var(--muted)">Daily operations dashboard</div>
+      <p class="scope" id="scopeNote"></p>
+    </div>
+
+    <div class="filters">
+      <select id="agentFilter"><option value="all">All Agents</option></select>
+      <select id="modeFilter">
+        <option value="all">All Modes</option>
+        <option value="On-site">On-site</option>
+        <option value="VR">VR</option>
+      </select>
+      <button id="scheduleBtn" onclick="openSchedule()">+ Schedule Visit</button>
+    </div>
+  </div>
+
+  <h3>Today’s Visits</h3>
+  <div class="today-strip" id="todayVisits"></div>
+
+  <div class="pipeline">
+    <div class="col"><h3>Scheduled</h3><div id="Scheduled"></div></div>
+    <div class="col"><h3>Completed</h3><div id="Completed"></div></div>
+    <div class="col"><h3>Unsuccessful Visit</h3><div id="Unsuccessful"></div></div>
+    <div class="col"><h3>Rescheduled</h3><div id="Rescheduled"></div></div>
+  </div>
+
+</div>
+
+<!-- Schedule Modal -->
+<div id="scheduleModal">
+  <div class="modal">
+    <h3>Schedule Site Visit</h3>
+    <label>Client</label><select id="svClient"></select>
+    <label>Listing / Project</label><select id="svListing"></select>
+    <label>Date &amp; Time</label><input id="svTime" type="datetime-local">
+    <label>Mode</label>
+    <select id="svMode"><option>On-site</option><option>VR</option></select>
+    <label>Agent</label>
+    <select id="svAgent"></select>
+    <div class="modal-actions">
+      <button onclick="closeSchedule()">Cancel</button>
+      <button onclick="saveVisit()" style="background:#10b981;color:#000;border:0">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reschedule Modal -->
+<div id="rescheduleModal">
+  <div class="modal">
+    <h3>Reschedule Visit</h3>
+    <label>New Date &amp; Time</label>
+    <input id="rsTime" type="datetime-local">
+    <div class="modal-actions">
+      <button onclick="closeReschedule()">Cancel</button>
+      <button onclick="confirmReschedule()" style="background:#10b981;color:#000;border:0">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Unsuccessful Modal -->
+<div id="unsuccessModal">
+  <div class="modal">
+    <h3>Mark Unsuccessful Visit</h3>
+    <label>Reason</label>
+    <select id="usReason">
+      <option value="">Select reason</option>
+      <option>Client Unavailable</option>
+      <option>No Response</option>
+      <option>Client Not Confirmed</option>
+      <option>Client Cancelled</option>
+      <option>Decision Maker Not Available</option>
+      <option>Budget Issue</option>
+      <option>Location Not Liked</option>
+      <option>Project Not Liked</option>
+      <option>Unit Not Available</option>
+      <option>Reschedule Requested</option>
+      <option>Other (Add Note)</option>
+    </select>
+    <div class="modal-actions">
+      <button onclick="closeUnsuccess()">Cancel</button>
+      <button onclick="confirmUnsuccess()" style="background:#ef4444;color:#fff;border:0">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script src="portal-db.js"></script>
+<script>
+if(!XPortal.requireModule('visits')){ throw new Error('access denied'); }
+
+/* Role comes from the session. Founder sees every visit in the company;
+   other roles only see the visits assigned to them. */
+var ME          = XPortal.currentUser();
+var CAN_SEE_ALL = XPortal.can('data.viewAll');
+var CAN_CREATE  = XPortal.can('visits.create');
+var CAN_MANAGE  = XPortal.can('visits.manage');
+
+var rescheduleId = null;
+var unsuccessId  = null;
+
+document.getElementById('scheduleBtn').style.display = CAN_CREATE ? '' : 'none';
+document.getElementById('scopeNote').textContent = CAN_SEE_ALL
+  ? 'All visits across every agent.'
+  : 'Showing only your visits (' + XPortal.roleLabel() + ' view).';
+
+/* ---------- helpers ---------- */
+function tempLabel(t){ return { hot:'🔥 Hot', warm:'🌤️ Warm', cold:'❄️ Cold' }[t] || ''; }
+function isSoon(t){ var d = new Date(t) - new Date(); return d > 0 && d <= 2 * 60 * 60 * 1000; }
+function isOverdue(t, s){ return new Date(t) < new Date() && s === 'Scheduled'; }
+function fmt(ts){
+  if(!ts) return '—';
+  var d = new Date(ts);
+  return isNaN(d) ? '—' : d.toLocaleString();
+}
+function clientName(id){ var c = XPortal.find('leads', id); return c ? c.name : (id || '—'); }
+function clientTemp(id){ var c = XPortal.find('leads', id); return c ? c.temperature : ''; }
+function listingName(id){ var l = XPortal.find('listings', id); return l ? l.title : (id || '—'); }
+
+/* ---------- filters ---------- */
+function fillFilters(){
+  var agents = XPortal.list('users').filter(function(u){
+    return ['agent','core','founder'].indexOf((u.role||'').toLowerCase()) !== -1;
+  });
+  var sel = document.getElementById('agentFilter');
+  agents.forEach(function(a){
+    var o = document.createElement('option');
+    o.value = a.id;
+    o.textContent = a.name;
+    sel.appendChild(o);
+  });
+  // A non-founder only ever sees their own rows, so the picker is noise.
+  if(!CAN_SEE_ALL) sel.style.display = 'none';
+}
+
+function visibleVisits(){
+  var rows = XPortal.scoped('visits', ['agentId']);
+  var agent = document.getElementById('agentFilter').value;
+  var mode  = document.getElementById('modeFilter').value;
+  if(agent !== 'all') rows = rows.filter(function(v){ return v.agentId === agent; });
+  if(mode  !== 'all') rows = rows.filter(function(v){ return v.mode === mode; });
+  return rows;
+}
+
+/* ---------- render ---------- */
+function render(){
+  var cols = ['Scheduled','Completed','Unsuccessful','Rescheduled'];
+  cols.forEach(function(s){ document.getElementById(s).innerHTML = ''; });
+  var today = document.getElementById('todayVisits');
+  today.innerHTML = '';
+
+  var rows = visibleVisits();
+  var todayStr = new Date().toDateString();
+  var todayCount = 0;
+
+  rows.forEach(function(v){
+    var status = v.status || 'Scheduled';
+    var host = document.getElementById(status) || document.getElementById('Scheduled');
+    host.appendChild(visitCard(v));
+
+    if(new Date(v.scheduledAt).toDateString() === todayStr){
+      todayCount++;
+      today.appendChild(todayCard(v));
+    }
+  });
+
+  cols.forEach(function(s){
+    var el = document.getElementById(s);
+    if(!el.children.length){
+      var none = document.createElement('div');
+      none.className = 'none';
+      none.textContent = 'None';
+      el.appendChild(none);
+    }
+  });
+
+  if(!todayCount){
+    var n = document.createElement('div');
+    n.className = 'card muted';
+    n.textContent = 'No visits scheduled for today.';
+    today.appendChild(n);
+  }
+}
+
+function todayCard(v){
+  var d = document.createElement('div');
+  d.className = 'card';
+  var s = document.createElement('strong');
+  s.textContent = clientName(v.clientId);
+  d.appendChild(s);
+  d.appendChild(muted(listingName(v.listingId)));
+  d.appendChild(muted(fmt(v.scheduledAt) + ' • ' + (v.mode || '—')));
+  d.appendChild(muted(XPortal.userName(v.agentId)));
+  return d;
+}
+
+function visitCard(v){
+  var soon = isSoon(v.scheduledAt);
+  var over = isOverdue(v.scheduledAt, v.status);
+
+  var box = document.createElement('div');
+  box.className = 'visit' + (soon ? ' soon' : '') + (over ? ' overdue' : '');
+
+  var head = document.createElement('div');
+  var strong = document.createElement('strong');
+  strong.textContent = clientName(v.clientId);
+  head.appendChild(strong);
+  var t = clientTemp(v.clientId);
+  if(t){
+    var sp = document.createElement('span');
+    sp.className = t;
+    sp.textContent = ' ' + tempLabel(t);
+    head.appendChild(sp);
+  }
+  box.appendChild(head);
+
+  box.appendChild(muted(listingName(v.listingId)));
+  box.appendChild(muted(fmt(v.scheduledAt) + ' • ' + XPortal.userName(v.agentId) + ' • ' + (v.mode || '—')));
+  if(v.reason) box.appendChild(muted('Reason: ' + v.reason));
+
+  if(soon) box.appendChild(flag('warm', '⏰ Soon'));
+  if(over) box.appendChild(flag('hot', '⚠️ Overdue'));
+
+  if(CAN_MANAGE){
+    var acts = document.createElement('div');
+    acts.style.marginTop = '6px';
+    acts.appendChild(actionBtn('Done',         function(){ updateStatus(v.id, 'Completed'); }));
+    acts.appendChild(actionBtn('Unsuccessful', function(){ openUnsuccess(v.id); }));
+    acts.appendChild(actionBtn('Reschedule',   function(){ openReschedule(v.id); }));
+    box.appendChild(acts);
+  }
+  return box;
+}
+
+function muted(text){
+  var d = document.createElement('div');
+  d.style.color = 'var(--muted)';
+  d.textContent = text;
+  return d;
+}
+function flag(cls, text){
+  var d = document.createElement('div');
+  d.className = cls;
+  d.textContent = text;
+  return d;
+}
+function actionBtn(text, handler){
+  var b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'action-btn';
+  b.textContent = text;
+  b.addEventListener('click', handler);
+  return b;
+}
+
+/* ---------- actions ---------- */
+function updateStatus(id, s){
+  if(!CAN_MANAGE){ alert('Your role cannot update visit status.'); return; }
+  XPortal.update('visits', id, { status: s, endedAt: s === 'Completed' ? Date.now() : null });
+  XPortal.audit('Visit ' + id + ' marked ' + s + ' by ' + ME.name);
+  render();
+}
+
+function fillScheduleForm(){
+  var clients = XPortal.scoped('leads', ['assignedAgent']);
+  var cs = document.getElementById('svClient');
+  cs.innerHTML = '';
+  clients.forEach(function(c){
+    var o = document.createElement('option');
+    o.value = c.id; o.textContent = c.name;
+    cs.appendChild(o);
+  });
+
+  var ls = document.getElementById('svListing');
+  ls.innerHTML = '';
+  XPortal.list('listings').forEach(function(l){
+    var o = document.createElement('option');
+    o.value = l.id; o.textContent = l.title;
+    ls.appendChild(o);
+  });
+
+  var as = document.getElementById('svAgent');
+  as.innerHTML = '';
+  var agents = XPortal.list('users').filter(function(u){
+    return ['agent','core','founder'].indexOf((u.role||'').toLowerCase()) !== -1;
+  });
+  // Only the founder may book a visit on someone else's behalf.
+  if(!CAN_SEE_ALL) agents = agents.filter(function(a){ return a.id === ME.id; });
+  agents.forEach(function(a){
+    var o = document.createElement('option');
+    o.value = a.id; o.textContent = a.name;
+    if(a.id === ME.id) o.selected = true;
+    as.appendChild(o);
+  });
+}
+
+function openSchedule(){
+  if(!CAN_CREATE){ alert('Your role cannot schedule visits.'); return; }
+  fillScheduleForm();
+  document.getElementById('scheduleModal').style.display = 'flex';
+}
+function closeSchedule(){ document.getElementById('scheduleModal').style.display = 'none'; }
+
+function saveVisit(){
+  var iso = document.getElementById('svTime').value;
+  if(!iso){ alert('Select a date & time'); return; }
+  var clientId = document.getElementById('svClient').value;
+  if(!clientId){ alert('No client selected. Add a client first.'); return; }
+
+  XPortal.insert('visits', {
+    id: XPortal.uid('v'),
+    clientId: clientId,
+    listingId: document.getElementById('svListing').value,
+    agentId: document.getElementById('svAgent').value,
+    mode: document.getElementById('svMode').value,
+    status: 'Scheduled',
+    scheduledAt: new Date(iso).getTime(),
+    endedAt: null,
+    feedbackSubmittedAt: null
+  });
+  XPortal.audit('Visit scheduled for ' + clientName(clientId) + ' by ' + ME.name);
+  XPortal.activity(ME.name + ' scheduled a site visit for ' + clientName(clientId));
+
+  closeSchedule();
+  render();
+}
+
+function openReschedule(id){
+  if(!CAN_MANAGE){ alert('Your role cannot reschedule visits.'); return; }
+  rescheduleId = id;
+  document.getElementById('rescheduleModal').style.display = 'flex';
+}
+function closeReschedule(){ document.getElementById('rescheduleModal').style.display = 'none'; rescheduleId = null; }
+function confirmReschedule(){
+  var iso = document.getElementById('rsTime').value;
+  if(!iso){ alert('Select date & time'); return; }
+  XPortal.update('visits', rescheduleId, { scheduledAt: new Date(iso).getTime(), status: 'Rescheduled' });
+  XPortal.audit('Visit ' + rescheduleId + ' rescheduled by ' + ME.name);
+  closeReschedule();
+  render();
+}
+
+function openUnsuccess(id){
+  if(!CAN_MANAGE){ alert('Your role cannot update visit status.'); return; }
+  unsuccessId = id;
+  document.getElementById('unsuccessModal').style.display = 'flex';
+}
+function closeUnsuccess(){ document.getElementById('unsuccessModal').style.display = 'none'; unsuccessId = null; }
+
+function confirmUnsuccess(){
+  var reason = document.getElementById('usReason').value;
+  if(!reason){ alert('Select a reason'); return; }
+  XPortal.update('visits', unsuccessId, { status: 'Unsuccessful', reason: reason });
+  XPortal.audit('Visit ' + unsuccessId + ' marked unsuccessful (' + reason + ') by ' + ME.name);
+  closeUnsuccess();
+  autoFollowUp(reason);
+  render();
+}
+
+function autoFollowUp(reason){
+  var msg = 'Manual follow-up in 24–48 hrs';
+  if(reason === 'No Response' || reason === 'Client Unavailable') msg = 'Auto follow-up call in 24 hrs';
+  if(reason === 'Budget Issue')          msg = 'Suggest lower budget listings in 48 hrs';
+  if(reason === 'Location Not Liked')    msg = 'Suggest alternate areas in 48 hrs';
+  if(reason === 'Project Not Liked')     msg = 'Suggest similar projects in 48 hrs';
+  if(reason === 'Reschedule Requested')  msg = 'Reschedule visit with new date & time';
+  XPortal.activity('Follow-up created: ' + msg);
+  alert('Auto Follow-up Created:\n' + msg);
+}
+
+/* Prefill from leadview.html's "schedule visit" shortcut. */
+(function(){
+  var params = new URLSearchParams(window.location.search);
+  var dt = params.get('dt');
+  if(dt && CAN_CREATE){
+    fillScheduleForm();
+    var lead = params.get('lead');
+    if(lead){
+      var sel = document.getElementById('svClient');
+      for(var i = 0; i < sel.options.length; i++){
+        if(sel.options[i].value === lead){ sel.selectedIndex = i; break; }
+      }
+    }
+    document.getElementById('svTime').value = dt;
+    document.getElementById('scheduleModal').style.display = 'flex';
+  }
+})();
+
+document.getElementById('agentFilter').addEventListener('change', render);
+document.getElementById('modeFilter').addEventListener('change', render);
+
+fillFilters();
+render();
+</script>
+  <script src="portal-nav.js"></script>
+</body>
+</html>

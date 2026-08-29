@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Xspace &amp; Co | Listings</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+:root{
+  --bg:#0b0b0b;
+  --panel:#0f1720;
+  --fg:#fff;
+  --muted:#9aa0a6;
+  --accent:#10b981;
+  --border:rgba(255,255,255,0.08);
+  font-family: Inter, system-ui;
+}
+body{margin:0;background:var(--bg);color:var(--fg);}
+.container{padding:20px;}
+h1{margin:0 0 6px;}
+
+.top-bar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:14px;
+  gap:14px;
+  flex-wrap:wrap;
+}
+
+button{
+  background:var(--accent);
+  color:#000;
+  border:0;
+  padding:8px 14px;
+  border-radius:8px;
+  font-weight:600;
+  cursor:pointer;
+}
+
+select{
+  background:var(--panel);color:var(--fg);border:1px solid var(--border);
+  padding:8px 12px;border-radius:8px;font-size:14px;
+}
+
+.table-wrap{overflow-x:auto;}
+table{
+  width:100%;
+  border-collapse:collapse;
+  background:var(--panel);
+  border-radius:12px;
+  overflow:hidden;
+}
+th,td{
+  padding:12px;
+  border-bottom:1px solid var(--border);
+  font-size:14px;
+  text-align:left;
+}
+th{color:var(--muted);font-weight:500;}
+tr:hover{background:rgba(255,255,255,0.03);}
+
+/* badges */
+.badge{padding:4px 10px;border-radius:999px;font-size:12px;display:inline-block;}
+.unverified{background:#64748b;}
+.verified{background:#22c55e;color:#000;}
+.rejected{background:#ef4444;}
+
+.small{font-size:12px;color:var(--muted);}
+.action-btn{
+  background:transparent;
+  border:1px solid var(--border);
+  color:var(--fg);
+  padding:4px 10px;
+  border-radius:6px;
+  cursor:pointer;
+  font-weight:500;
+  font-size:12px;
+  margin-right:6px;
+}
+.action-btn:hover{background:rgba(255,255,255,0.08);}
+.action-btn.danger:hover{background:rgba(239,68,68,.2);border-color:#ef4444;color:#fca5a5;}
+.empty{padding:28px;text-align:center;color:var(--muted);font-size:13px;background:var(--panel);border-radius:12px;}
+.scope{color:var(--muted);font-size:12px;margin:0;}
+
+.modal-back{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:100;padding:20px;}
+.modal-back.open{display:flex;}
+.modal{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px;width:100%;max-width:420px;}
+.modal h3{margin:0 0 12px;font-size:16px;}
+.modal label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px;}
+.modal input,.modal select{
+  width:100%;box-sizing:border-box;margin-bottom:10px;background:#000;color:var(--fg);
+  border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:14px;
+}
+.modal .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px;}
+.modal .ghost{background:transparent;border:1px solid var(--border);color:var(--fg);font-weight:500;}
+.modal .err{color:#fca5a5;font-size:12px;margin:0 0 8px;display:none;}
+
+/* photo picker */
+.photo-drop{
+  border:1px dashed var(--border);border-radius:10px;padding:14px;text-align:center;
+  color:var(--muted);font-size:13px;cursor:pointer;margin-bottom:10px;
+}
+.photo-drop:hover{background:rgba(255,255,255,.03);border-color:var(--accent);}
+.photo-drop.busy{opacity:.6;pointer-events:none;}
+.photo-drop input{display:none;}
+.photo-stats{font-size:12px;color:var(--accent);margin:-4px 0 10px;display:none;}
+.photo-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+.photo-chip{position:relative;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--border);}
+.photo-chip img{width:100%;height:100%;object-fit:cover;display:block;}
+.photo-chip button{
+  position:absolute;top:2px;right:2px;width:18px;height:18px;padding:0;line-height:1;
+  border-radius:50%;border:0;background:rgba(0,0,0,.75);color:#fff;font-size:12px;cursor:pointer;
+}
+.thumb-cell{display:flex;align-items:center;gap:6px;}
+.thumb-cell img{width:40px;height:40px;border-radius:6px;object-fit:cover;border:1px solid var(--border);}
+.thumb-more{font-size:11px;color:var(--muted);}
+.no-thumb{
+  width:40px;height:40px;border-radius:6px;border:1px dashed var(--border);
+  display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--muted);
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+  <div class="top-bar">
+    <div>
+      <h1>Listings</h1>
+      <p class="scope" id="scopeNote"></p>
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <select id="statusFilter">
+        <option value="all">All statuses</option>
+        <option value="unverified">Unverified</option>
+        <option value="verified">Verified</option>
+      </select>
+      <button id="addBtn" onclick="openAdd()">+ Add Listing</button>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Photo</th>
+          <th>Listing</th>
+          <th>Location</th>
+          <th>Price</th>
+          <th>Type</th>
+          <th>Submitted By</th>
+          <th>Status</th>
+          <th id="actionCol">Action</th>
+        </tr>
+      </thead>
+      <tbody id="listingTable"></tbody>
+    </table>
+  </div>
+  <div class="empty" id="emptyState" style="display:none">No listings to show.</div>
+
+</div>
+
+<!-- Add / edit modal -->
+<div class="modal-back" id="listingModal">
+  <div class="modal">
+    <h3 id="modalTitle">Add Listing</h3>
+    <p class="err" id="modalErr"></p>
+    <label for="fTitle">Title</label>
+    <input id="fTitle" placeholder="e.g. 2BHK Tellapur">
+    <label for="fArea">Location / Area</label>
+    <input id="fArea" placeholder="e.g. Tellapur">
+    <label for="fPrice">Price</label>
+    <input id="fPrice" placeholder="e.g. 1.15 Cr">
+    <label for="fType">Unit type</label>
+    <input id="fType" placeholder="e.g. 2BHK">
+    <label for="fProject">Project</label>
+    <select id="fProject"></select>
+    <label>Photos</label>
+    <label class="photo-drop" id="photoDrop">
+      <input type="file" id="photoInput" accept="image/*" multiple>
+      <span id="photoDropText">📷 Click to add photos — compressed automatically before saving</span>
+    </label>
+    <div class="photo-stats" id="photoStats"></div>
+    <div class="photo-grid" id="photoGrid"></div>
+
+    <div class="actions">
+      <button class="ghost" onclick="closeModal()">Cancel</button>
+      <button onclick="saveListing()" id="saveBtn">Add</button>
+    </div>
+  </div>
+</div>
+
+<script src="portal-db.js"></script>
+<script src="portal-image.js"></script>
+<script>
+if(!XPortal.requireModule('listings')){ throw new Error('access denied'); }
+
+/* Permissions come from the signed-in session, not a hardcoded constant.
+   Founder sees every listing; everyone else sees only their own. */
+var ME          = XPortal.currentUser();
+var CAN_SEE_ALL = XPortal.can('data.viewAll');
+var CAN_CREATE  = XPortal.can('listings.create');
+var CAN_VERIFY  = XPortal.can('listings.verify');
+var CAN_EDIT    = XPortal.can('listings.edit');
+var CAN_DELETE  = XPortal.can('listings.delete');
+
+var tbody     = document.getElementById('listingTable');
+var actionCol = document.getElementById('actionCol');
+var emptyEl   = document.getElementById('emptyState');
+var filterEl  = document.getElementById('statusFilter');
+var modal     = document.getElementById('listingModal');
+var editingId = null;
+
+document.getElementById('addBtn').style.display = CAN_CREATE ? '' : 'none';
+document.getElementById('scopeNote').textContent = CAN_SEE_ALL
+  ? 'All submitted inventory across the company.'
+  : 'Showing only the listings you submitted (' + XPortal.roleLabel() + ' view).';
+
+if(!CAN_VERIFY && !CAN_EDIT && !CAN_DELETE) actionCol.style.display = 'none';
+
+/* ---------- render ---------- */
+function visibleListings(){
+  // Founder: everything. Others: rows they submitted or are assigned to.
+  var rows = XPortal.scoped('listings', ['submittedBy','assignedAgent']);
+  var f = filterEl.value;
+  if(f === 'verified')   rows = rows.filter(function(l){ return l.verified === true; });
+  if(f === 'unverified') rows = rows.filter(function(l){ return l.verified !== true; });
+  return rows;
+}
+
+function renderListings(){
+  tbody.innerHTML = '';
+  var rows = visibleListings();
+  emptyEl.style.display = rows.length ? 'none' : 'block';
+
+  rows.forEach(function(l){
+    var tr = document.createElement('tr');
+
+    tr.appendChild(thumbCell(l));
+    tr.appendChild(td(l.title || '—', true));
+    tr.appendChild(td(l.area || '—'));
+    tr.appendChild(td(l.price || '—'));
+    tr.appendChild(td(l.unitType || '—'));
+
+    var by = document.createElement('td');
+    by.textContent = XPortal.userName(l.submittedBy || l.assignedAgent);
+    if((l.submittedBy || l.assignedAgent) === ME.id){
+      var you = document.createElement('div');
+      you.className = 'small';
+      you.textContent = '(You)';
+      by.appendChild(you);
+    }
+    tr.appendChild(by);
+
+    var st = document.createElement('td');
+    var badge = document.createElement('span');
+    badge.className = 'badge ' + (l.verified ? 'verified' : 'unverified');
+    badge.textContent = l.verified ? 'Verified' : 'Unverified';
+    st.appendChild(badge);
+    tr.appendChild(st);
+
+    var act = document.createElement('td');
+    if(CAN_VERIFY && !l.verified){
+      act.appendChild(btn('Verify', '', function(){ verifyListing(l.id); }));
+    }
+    if(CAN_EDIT){
+      act.appendChild(btn('Edit', '', function(){ openEdit(l); }));
+    }
+    if(CAN_DELETE){
+      act.appendChild(btn('Delete', 'danger', function(){
+        if(!confirm('Delete listing "' + (l.title || l.id) + '"?')) return;
+        XPortal.remove('listings', l.id);
+        XPortal.audit('Founder deleted listing ' + (l.title || l.id));
+        renderListings();
+      }));
+    }
+    if(!CAN_VERIFY && !CAN_EDIT && !CAN_DELETE) act.style.display = 'none';
+    tr.appendChild(act);
+
+    tbody.appendChild(tr);
+  });
+}
+
+function thumbCell(l){
+  var cell = document.createElement('td');
+  var wrap = document.createElement('div');
+  wrap.className = 'thumb-cell';
+
+  var photos = l.photos || [];
+  if(!photos.length){
+    var ph = document.createElement('div');
+    ph.className = 'no-thumb';
+    ph.textContent = '🏠';
+    ph.title = 'No photos';
+    wrap.appendChild(ph);
+  } else {
+    var img = document.createElement('img');
+    img.src = photos[0].thumb;
+    img.alt = l.title || 'Listing photo';
+    img.loading = 'lazy';
+    wrap.appendChild(img);
+    if(photos.length > 1){
+      var more = document.createElement('span');
+      more.className = 'thumb-more';
+      more.textContent = '+' + (photos.length - 1);
+      wrap.appendChild(more);
+    }
+  }
+  cell.appendChild(wrap);
+  return cell;
+}
+
+function td(text, strong){
+  var el = document.createElement('td');
+  if(strong){
+    var s = document.createElement('strong');
+    s.textContent = text;
+    el.appendChild(s);
+  } else {
+    el.textContent = text;
+  }
+  return el;
+}
+
+function btn(text, extra, handler){
+  var b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'action-btn ' + extra;
+  b.textContent = text;
+  b.addEventListener('click', handler);
+  return b;
+}
+
+/* ---------- actions ---------- */
+function verifyListing(id){
+  if(!CAN_VERIFY){ alert('Your role cannot verify listings.'); return; }
+  XPortal.update('listings', id, { verified: true, status: 'Verified' });
+  var l = XPortal.find('listings', id);
+  XPortal.audit('Listing ' + (l ? l.title : id) + ' marked verified by ' + ME.name);
+  XPortal.activity(ME.name + ' verified listing ' + (l ? l.title : id));
+  renderListings();
+}
+
+function fillProjects(selected){
+  var sel = document.getElementById('fProject');
+  sel.innerHTML = '';
+  var none = document.createElement('option');
+  none.value = '';
+  none.textContent = '— none —';
+  sel.appendChild(none);
+  XPortal.list('projects').forEach(function(p){
+    var o = document.createElement('option');
+    o.value = p.id;
+    o.textContent = p.name;
+    if(p.id === selected) o.selected = true;
+    sel.appendChild(o);
+  });
+}
+
+/* ---------- photos ----------
+   Compression runs in the browser before anything is stored, so the 3–4 MB
+   file off a phone never gets saved or uploaded at full size. See
+   portal-image.js for the resize/encode itself.
+
+   For now only the small thumbnail is kept in localStorage — the browser only
+   gives us ~5 MB total, and full-size images would fill that after a handful
+   of listings. `pendingPhotos` holds the full-size blobs ready for
+   XImage.uploadToSupabase() once the backend is in place. */
+var pendingPhotos = [];
+
+function renderPhotoGrid(){
+  var grid = document.getElementById('photoGrid');
+  grid.innerHTML = '';
+  pendingPhotos.forEach(function(p, i){
+    var chip = document.createElement('div');
+    chip.className = 'photo-chip';
+
+    var img = document.createElement('img');
+    img.src = p.thumb;
+    img.alt = 'Listing photo ' + (i + 1);
+    chip.appendChild(img);
+
+    var x = document.createElement('button');
+    x.type = 'button';
+    x.textContent = '×';
+    x.title = 'Remove';
+    x.addEventListener('click', function(e){
+      e.preventDefault();
+      pendingPhotos.splice(i, 1);
+      renderPhotoGrid();
+      updatePhotoStats();
+    });
+    chip.appendChild(x);
+
+    grid.appendChild(chip);
+  });
+}
+
+function updatePhotoStats(){
+  var stats = document.getElementById('photoStats');
+  if(!pendingPhotos.length){ stats.style.display = 'none'; return; }
+  var before = 0, after = 0;
+  pendingPhotos.forEach(function(p){ before += p.originalSize || 0; after += p.size || 0; });
+  var pct = before ? Math.round((1 - after / before) * 100) : 0;
+  stats.textContent = pendingPhotos.length + ' photo' + (pendingPhotos.length === 1 ? '' : 's') +
+    ' • ' + XImage.formatBytes(before) + ' → ' + XImage.formatBytes(after) +
+    ' (' + pct + '% smaller, ' + (XImage.supportsWebP() ? 'WebP' : 'JPEG') + ')';
+  stats.style.display = 'block';
+}
+
+document.getElementById('photoInput').addEventListener('change', function(e){
+  var files = e.target.files;
+  if(!files || !files.length) return;
+
+  var drop = document.getElementById('photoDrop');
+  var text = document.getElementById('photoDropText');
+  drop.classList.add('busy');
+
+  XImage.compressAll(files, {}, function(done, total, name){
+    text.textContent = done < total
+      ? 'Compressing ' + (done + 1) + ' of ' + total + (name ? ' — ' + name : '') + '…'
+      : 'Finishing…';
+  }).then(function(out){
+    out.results.forEach(function(r){
+      pendingPhotos.push({
+        thumb: r.thumbDataUrl,   // stored in localStorage
+        blob: r.blob,            // uploaded to Supabase later
+        name: r.name,
+        width: r.width,
+        height: r.height,
+        originalSize: r.originalSize,
+        size: r.size
+      });
+    });
+    if(out.errors.length){
+      showErr(out.errors.map(function(x){ return x.message; }).join(' '));
+    }
+    renderPhotoGrid();
+    updatePhotoStats();
+  }).catch(function(err){
+    showErr(err.message || 'Could not process those images.');
+  }).then(function(){
+    drop.classList.remove('busy');
+    text.textContent = '📷 Click to add photos — compressed automatically before saving';
+    e.target.value = '';   // let the same file be picked again
+  });
+});
+
+function resetPhotos(existing){
+  pendingPhotos = (existing || []).map(function(p){ return Object.assign({}, p); });
+  renderPhotoGrid();
+  updatePhotoStats();
+}
+
+function openAdd(){
+  if(!CAN_CREATE){ alert('Your role cannot add listings.'); return; }
+  editingId = null;
+  document.getElementById('modalTitle').textContent = 'Add Listing';
+  document.getElementById('saveBtn').textContent = 'Add';
+  ['fTitle','fArea','fPrice','fType'].forEach(function(id){ document.getElementById(id).value = ''; });
+  fillProjects('');
+  resetPhotos([]);
+  hideErr();
+  modal.classList.add('open');
+}
+
+function openEdit(l){
+  if(!CAN_EDIT){ alert('Your role cannot edit listings.'); return; }
+  editingId = l.id;
+  document.getElementById('modalTitle').textContent = 'Edit Listing';
+  document.getElementById('saveBtn').textContent = 'Save';
+  document.getElementById('fTitle').value = l.title || '';
+  document.getElementById('fArea').value  = l.area || '';
+  document.getElementById('fPrice').value = l.price || '';
+  document.getElementById('fType').value  = l.unitType || '';
+  fillProjects(l.projectId);
+  resetPhotos(l.photos || []);
+  hideErr();
+  modal.classList.add('open');
+}
+
+function closeModal(){ modal.classList.remove('open'); editingId = null; }
+function showErr(m){ var e = document.getElementById('modalErr'); e.textContent = m; e.style.display = 'block'; }
+function hideErr(){ document.getElementById('modalErr').style.display = 'none'; }
+
+function saveListing(){
+  hideErr();
+  var title = document.getElementById('fTitle').value.trim();
+  if(!title){ showErr('Title is required.'); return; }
+
+  var payload = {
+    title: title,
+    area: document.getElementById('fArea').value.trim() || '—',
+    price: document.getElementById('fPrice').value.trim() || '—',
+    unitType: document.getElementById('fType').value.trim() || '—',
+    projectId: document.getElementById('fProject').value,
+    // Only the thumbnail and the metadata are persisted; the full-size blob
+    // lives in memory until there is a Supabase bucket to upload it to.
+    photos: pendingPhotos.map(function(p){
+      return {
+        thumb: p.thumb, name: p.name, width: p.width, height: p.height,
+        originalSize: p.originalSize, size: p.size
+      };
+    })
+  };
+
+  try {
+  if(editingId){
+    XPortal.update('listings', editingId, payload);
+    XPortal.audit('Listing ' + title + ' edited by ' + ME.name);
+  } else {
+    payload.id = XPortal.uid('l');
+    payload.verified = false;
+    payload.status = 'Available';
+    payload.submittedBy = ME.id;
+    payload.assignedAgent = ME.id;
+    XPortal.insert('listings', payload);
+    XPortal.audit('Listing ' + title + ' submitted by ' + ME.name);
+    XPortal.activity(ME.name + ' added listing ' + title);
+  }
+  } catch(err){
+    showErr(err.message || 'Could not save.');
+    return;
+  }
+
+  closeModal();
+  renderListings();
+}
+
+modal.addEventListener('click', function(e){ if(e.target === modal) closeModal(); });
+filterEl.addEventListener('change', renderListings);
+renderListings();
+</script>
+  <script src="portal-nav.js"></script>
+</body>
+</html>

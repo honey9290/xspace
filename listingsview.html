@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Xspace & Co | Listing Intelligence</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+:root{
+  --bg:#0b0b0b;
+  --panel:#0f1720;
+  --fg:#fff;
+  --muted:#9aa0a6;
+  --border:rgba(255,255,255,0.08);
+  --accent:#10b981;
+  font-family: Inter, system-ui;
+}
+body{margin:0;background:var(--bg);color:var(--fg);}
+.container{padding:20px;max-width:1100px;margin:auto;}
+
+.section{
+  background:var(--panel);
+  border-radius:12px;
+  padding:16px;
+  margin-bottom:16px;
+}
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+}
+h1{margin:0;}
+.small{font-size:13px;color:var(--muted);}
+
+.badge{
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:12px;
+}
+.verified{background:#22c55e;color:#000;}
+.hot{color:#ef4444;font-weight:600;}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:12px;
+}
+.box{
+  background:rgba(255,255,255,0.04);
+  padding:12px;
+  border-radius:10px;
+}
+.box strong{
+  display:block;
+  font-size:12px;
+  color:var(--muted);
+}
+
+.amenities{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+}
+.amenity{
+  background:rgba(255,255,255,0.04);
+  padding:10px;
+  border-radius:8px;
+  font-size:14px;
+}
+
+input[type="file"], input[type="text"]{
+  width:100%;
+  background:#020617;
+  border:1px solid var(--border);
+  color:var(--fg);
+  padding:8px;
+  border-radius:8px;
+  margin-top:6px;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<!-- HEADER -->
+<div class="section header">
+  <div>
+    <h1>MyHome Avatar – 3BHK</h1>
+    <div class="small">📍 Tellapur, West Hyderabad</div>
+    <div class="small">Submitted by: Sai (Agent)</div>
+    <div class="small hot">🔥 High Demand</div>
+  </div>
+  <div>
+    <span class="badge verified">Verified</span>
+  </div>
+</div>
+
+<!-- PROJECT SNAPSHOT -->
+<div class="section">
+  <h3>Project Snapshot</h3>
+  <div class="grid">
+    <div class="box"><strong>Builder</strong>MyHome Group</div>
+    <div class="box"><strong>Property Type</strong>Apartment (Gated)</div>
+    <div class="box"><strong>Configuration</strong>3BHK</div>
+    <div class="box"><strong>Possession</strong>Dec 2027</div>
+  </div>
+</div>
+
+<!-- UNIT DETAILS -->
+<div class="section">
+  <h3>Unit Details</h3>
+  <div class="grid">
+    <div class="box"><strong>Super Built-up Area</strong>2,050 sft</div>
+    <div class="box"><strong>Carpet Area</strong>1,450 sft</div>
+    <div class="box"><strong>UDS</strong>65 sq yds</div>
+    <div class="box"><strong>Facing</strong>East</div>
+  </div>
+</div>
+
+<!-- AMENITIES -->
+<div class="section">
+  <h3>Amenities</h3>
+  <div class="amenities">
+    <div class="amenity">🏊 Swimming Pool</div>
+    <div class="amenity">🏋️ Gymnasium</div>
+    <div class="amenity">🌳 Landscaped Gardens</div>
+    <div class="amenity">🎾 Sports Courts</div>
+    <div class="amenity">🧒 Children’s Play Area</div>
+    <div class="amenity">🛡️ 24×7 Security</div>
+    <div class="amenity">🚗 Visitor Parking</div>
+    <div class="amenity">🏠 Clubhouse</div>
+    <div class="amenity">🚶 Jogging Track</div>
+  </div>
+</div>
+
+<!-- PRICE & COMMERCIALS -->
+<div class="section">
+  <h3>Price & Commercials</h3>
+  <div class="grid">
+    <div class="box"><strong>Base Price</strong>₹1.05 Cr</div>
+    <div class="box"><strong>All-Inclusive</strong>₹1.15 Cr</div>
+    <div class="box"><strong>Negotiation</strong>Limited</div>
+    <div class="box"><strong>Commission</strong>2% (Builder)</div>
+  </div>
+</div>
+
+<!-- LEGAL & VERIFICATION -->
+<div class="section">
+  <h3>Legal & Verification</h3>
+  <div class="grid">
+    <div class="box"><strong>RERA No.</strong>P02400005555</div>
+    <div class="box"><strong>Approval</strong>HMDA</div>
+    <div class="box"><strong>Title Status</strong>Clear</div>
+    <div class="box"><strong>Bank Approved</strong>HDFC, SBI, ICICI</div>
+  </div>
+</div>
+
+<!-- MEDIA & DOCUMENTS -->
+<div class="section">
+  <h3>Media & Documents</h3>
+
+  <div class="box" style="margin-bottom:12px">
+    <strong>Photos</strong>
+    <div class="small">Elevation, amenities, site images</div>
+    <input type="file" multiple accept="image/*">
+  </div>
+
+  <div class="box" style="margin-bottom:12px">
+    <strong>Videos</strong>
+    <div class="small">Walkthrough / Drone / Reel</div>
+    <input type="file" multiple accept="video/*">
+    <input type="text" placeholder="Instagram / YouTube video link">
+  </div>
+
+  <div class="box">
+    <strong>Documents (PDF)</strong>
+    📄 Brochure
+    <input type="file" accept=".pdf"><br><br>
+    📄 Floor Plan
+    <input type="file" accept=".pdf"><br><br>
+    📄 Price Sheet
+    <input type="file" accept=".pdf">
+  </div>
+</div>
+
+<!-- SITE VISITS -->
+<div class="section">
+  <h3>Site Visits</h3>
+  <div class="small">
+    • 12 Jan 2026 – Ramesh Kumar<br>
+    • 18 Jan 2026 – NRI Client (Scheduled)
+  </div>
+</div>
+
+<!-- INTERNAL NOTES -->
+<div class="section">
+  <h3>Internal Notes</h3>
+  <div class="small">
+    Tower B preferred.  
+    Clients asking for higher floors.  
+    Inventory moving fast.
+  </div>
+</div>
+
+</div>
+  <script src="portal-db.js"></script>
+  <script src="portal-nav.js"></script>
+</body>
+</html>

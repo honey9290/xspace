@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Xspace &amp; Co | Clients</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+:root{
+  --bg:#0b0b0b;
+  --panel:#0f1720;
+  --fg:#fff;
+  --muted:#9aa0a6;
+  --accent:#10b981;
+  --border:rgba(255,255,255,0.08);
+  font-family: Inter, system-ui;
+}
+body{margin:0;background:var(--bg);color:var(--fg);}
+.container{padding:20px;}
+h1{margin:0 0 6px;}
+
+.top-bar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:14px;
+  gap:14px;
+  flex-wrap:wrap;
+}
+
+select{
+  background:var(--panel);
+  color:var(--fg);
+  border:1px solid var(--border);
+  padding:8px 12px;
+  border-radius:8px;
+  font-size:14px;
+}
+button{
+  background:var(--accent);color:#000;border:0;padding:8px 14px;
+  border-radius:8px;font-weight:600;cursor:pointer;font-size:14px;
+}
+
+.table-wrap{overflow-x:auto;}
+table{
+  width:100%;
+  border-collapse:collapse;
+  background:var(--panel);
+  border-radius:12px;
+  overflow:hidden;
+}
+th,td{
+  padding:12px;
+  text-align:left;
+  border-bottom:1px solid var(--border);
+  font-size:14px;
+}
+th{color:var(--muted);font-weight:500;}
+tbody tr:hover{background:rgba(255,255,255,0.03);cursor:pointer;}
+
+/* STATUS */
+.status{
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:12px;
+  background:rgba(255,255,255,0.06);
+  display:inline-block;
+  white-space:nowrap;
+}
+.discovery{background:#1f2937;}
+.engaged{background:#64748b;}
+.sitevisit{background:#0ea5e9;}
+.negotiation{background:#f59e0b;color:#000;}
+.closed{background:#10b981;color:#000;}
+.dropped{background:#ef4444;}
+
+/* TEMPERATURE */
+.temp{
+  font-size:12px;
+  margin-left:6px;
+  font-weight:500;
+}
+.hot{color:#ef4444;}
+.warm{color:#f59e0b;}
+.cold{color:#38bdf8;}
+
+/* SOURCE */
+.source{
+  display:block;
+  font-size:12px;
+  color:var(--muted);
+  margin-top:2px;
+}
+.scope{color:var(--muted);margin:0;font-size:12px;}
+.empty{padding:28px;text-align:center;color:var(--muted);font-size:13px;background:var(--panel);border-radius:12px;}
+.owner{font-size:12px;color:var(--muted);}
+
+.modal-back{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:100;padding:20px;}
+.modal-back.open{display:flex;}
+.modal{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px;width:100%;max-width:420px;}
+.modal h3{margin:0 0 12px;font-size:16px;}
+.modal label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px;}
+.modal input,.modal select{
+  width:100%;box-sizing:border-box;margin-bottom:10px;background:#000;color:var(--fg);
+  border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:14px;
+}
+.modal .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px;}
+.modal .ghost{background:transparent;border:1px solid var(--border);color:var(--fg);font-weight:500;}
+.modal .err{color:#fca5a5;font-size:12px;margin:0 0 8px;display:none;}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+  <div class="top-bar">
+    <div>
+      <h1>Clients</h1>
+      <p class="scope" id="scopeNote"></p>
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <select id="statusFilter">
+        <option value="all">All Clients</option>
+        <option value="Discovery">Discovery</option>
+        <option value="Engaged">Engaged</option>
+        <option value="Site Visit">Site Visit Done</option>
+        <option value="Negotiation">Negotiation</option>
+        <option value="Closed">Closed</option>
+      </select>
+      <button id="addBtn" onclick="openAdd()">+ Add Client</button>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Contact</th>
+          <th>Requirement</th>
+          <th id="ownerHead">Owner</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="clientTable"></tbody>
+    </table>
+  </div>
+  <div class="empty" id="emptyState" style="display:none">No clients to show.</div>
+
+</div>
+
+<!-- Add client modal -->
+<div class="modal-back" id="clientModal">
+  <div class="modal">
+    <h3>Add Client</h3>
+    <p class="err" id="modalErr"></p>
+    <label for="fName">Name</label>
+    <input id="fName" placeholder="Client name">
+    <label for="fPhone">Phone</label>
+    <input id="fPhone" placeholder="10-digit number">
+    <label for="fSource">Source</label>
+    <select id="fSource">
+      <option>Instagram</option><option>Referral</option>
+      <option>Website</option><option>Walk-in</option><option>Other</option>
+    </select>
+    <label for="fBudget">Budget</label>
+    <input id="fBudget" placeholder="e.g. 1.5 Cr">
+    <label for="fTemp">Temperature</label>
+    <select id="fTemp"><option value="hot">🔥 Hot</option><option value="warm" selected>🌤️ Warm</option><option value="cold">❄️ Cold</option></select>
+    <div class="actions">
+      <button class="ghost" onclick="closeModal()">Cancel</button>
+      <button onclick="saveClient()">Add</button>
+    </div>
+  </div>
+</div>
+
+<script src="portal-db.js"></script>
+<script>
+if(!XPortal.requireModule('clients')){ throw new Error('access denied'); }
+
+var ME          = XPortal.currentUser();
+var CAN_SEE_ALL = XPortal.can('data.viewAll');
+var CAN_CREATE  = XPortal.can('clients.create');
+
+var tbody    = document.getElementById('clientTable');
+var filter   = document.getElementById('statusFilter');
+var emptyEl  = document.getElementById('emptyState');
+var modal    = document.getElementById('clientModal');
+
+document.getElementById('addBtn').style.display = CAN_CREATE ? '' : 'none';
+document.getElementById('scopeNote').textContent = CAN_SEE_ALL
+  ? 'Every client in the company. Click a row for full details.'
+  : 'Showing only clients assigned to you (' + XPortal.roleLabel() + ' view). Click a row for details.';
+// The owner column only means something when you can see other people's rows.
+if(!CAN_SEE_ALL) document.getElementById('ownerHead').style.display = 'none';
+
+function statusClass(s){
+  return String(s || '').toLowerCase().replace(/[^a-z]/g, '');
+}
+
+function tempLabel(t){
+  return { hot:'🔥 Hot', warm:'🌤️ Warm', cold:'❄️ Cold' }[t] || '';
+}
+
+function renderClients(){
+  tbody.innerHTML = '';
+  var selected = filter.value;
+
+  // Founder sees every lead; other roles only the ones assigned to them.
+  var rows = XPortal.scoped('leads', ['assignedAgent']);
+  if(selected !== 'all') rows = rows.filter(function(c){ return c.status === selected; });
+
+  emptyEl.style.display = rows.length ? 'none' : 'block';
+
+  rows.forEach(function(c){
+    var tr = document.createElement('tr');
+    tr.addEventListener('click', function(){ openClient(c.id); });
+
+    var name = document.createElement('td');
+    name.appendChild(document.createTextNode(c.name || '—'));
+    var temp = document.createElement('span');
+    temp.className = 'temp ' + (c.temperature || '');
+    temp.textContent = tempLabel(c.temperature);
+    name.appendChild(temp);
+    var src = document.createElement('span');
+    src.className = 'source';
+    src.textContent = c.source || '—';
+    name.appendChild(src);
+    tr.appendChild(name);
+
+    tr.appendChild(cell(c.phone || '—'));
+    tr.appendChild(cell(c.budget ? (c.budget + (c.listingId ? ' • ' + listingLabel(c.listingId) : '')) : '—'));
+
+    if(CAN_SEE_ALL){
+      var owner = document.createElement('td');
+      owner.className = 'owner';
+      owner.textContent = XPortal.userName(c.assignedAgent);
+      tr.appendChild(owner);
+    }
+
+    var st = document.createElement('td');
+    var badge = document.createElement('span');
+    badge.className = 'status ' + statusClass(c.status);
+    badge.textContent = c.status || '—';
+    st.appendChild(badge);
+    tr.appendChild(st);
+
+    tbody.appendChild(tr);
+  });
+}
+
+function cell(text){
+  var td = document.createElement('td');
+  td.textContent = text;
+  return td;
+}
+
+function listingLabel(id){
+  var l = XPortal.find('listings', id);
+  return l ? l.title : id;
+}
+
+// The old link pointed at lead-view.html, which does not exist in this project.
+function openClient(id){
+  window.location.href = 'leadview.html?id=' + encodeURIComponent(id);
+}
+
+/* ---------- add ---------- */
+function openAdd(){
+  if(!CAN_CREATE){ alert('Your role cannot add clients.'); return; }
+  ['fName','fPhone','fBudget'].forEach(function(id){ document.getElementById(id).value = ''; });
+  hideErr();
+  modal.classList.add('open');
+}
+function closeModal(){ modal.classList.remove('open'); }
+function showErr(m){ var e = document.getElementById('modalErr'); e.textContent = m; e.style.display = 'block'; }
+function hideErr(){ document.getElementById('modalErr').style.display = 'none'; }
+
+function saveClient(){
+  hideErr();
+  var name  = document.getElementById('fName').value.trim();
+  var phone = document.getElementById('fPhone').value.trim();
+  if(!name){ showErr('Name is required.'); return; }
+  if(!/^\d{10}$/.test(phone)){ showErr('Enter a 10-digit phone number.'); return; }
+
+  XPortal.insert('leads', {
+    id: XPortal.uid('c'),
+    name: name,
+    phone: phone,
+    source: document.getElementById('fSource').value,
+    budget: document.getElementById('fBudget').value.trim() || '—',
+    temperature: document.getElementById('fTemp').value,
+    status: 'Discovery',
+    assignedAgent: ME.id,
+    createdAt: Date.now(),
+    listingId: null
+  });
+  XPortal.audit('Client ' + name + ' added by ' + ME.name);
+  XPortal.activity(ME.name + ' added client ' + name);
+
+  closeModal();
+  renderClients();
+}
+
+modal.addEventListener('click', function(e){ if(e.target === modal) closeModal(); });
+filter.addEventListener('change', renderClients);
+renderClients();
+</script>
+  <script src="portal-nav.js"></script>
+</body>
+</html>

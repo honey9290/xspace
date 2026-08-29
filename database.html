@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Xspace &amp; Co | Database</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{
+  --bg:#0b0b0b; --panel:#0f1720; --fg:#fff; --muted:#9aa0a6;
+  --accent:#10b981; --danger:#ef4444; --border:rgba(255,255,255,0.08);
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto;
+}
+body{margin:0;background:var(--bg);color:var(--fg);}
+.container{padding:20px;max-width:1400px;margin:0 auto;}
+h1{margin:0 0 4px;font-size:22px;}
+.sub{color:var(--muted);font-size:13px;margin:0 0 16px;}
+
+.warn{
+  background:rgba(245,158,11,.10); border:1px solid rgba(245,158,11,.35);
+  color:#fbbf24; padding:10px 14px; border-radius:10px; font-size:13px; margin-bottom:16px;
+}
+
+.layout{display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:start;}
+@media (max-width:860px){ .layout{grid-template-columns:1fr;} }
+
+.side{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:8px;}
+.side button{
+  display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;
+  background:transparent;border:0;color:var(--fg);font:inherit;font-size:13px;
+  padding:8px 10px;border-radius:8px;cursor:pointer;text-align:left;
+}
+.side button:hover{background:rgba(255,255,255,.05);}
+.side button.active{background:rgba(16,185,129,.15);color:var(--accent);}
+.side .count{font-size:11px;color:var(--muted);}
+
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.panel-head{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  padding:12px 14px;border-bottom:1px solid var(--border);flex-wrap:wrap;
+}
+.panel-head h2{margin:0;font-size:15px;}
+.panel-head .muted{color:var(--muted);font-size:12px;}
+
+button.btn{
+  background:var(--accent);color:#000;border:0;padding:7px 12px;
+  border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;
+}
+button.ghost{background:transparent;border:1px solid var(--border);color:var(--fg);font-weight:500;}
+button.ghost:hover{background:rgba(255,255,255,.06);}
+button.danger{background:var(--danger);color:#fff;}
+
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th,td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top;white-space:nowrap;}
+th{color:var(--muted);font-weight:500;background:rgba(255,255,255,.03);position:sticky;top:0;}
+tr:hover td{background:rgba(255,255,255,.03);}
+td.val{max-width:280px;overflow:hidden;text-overflow:ellipsis;}
+.empty{padding:28px;text-align:center;color:var(--muted);font-size:13px;}
+
+.row-actions{display:flex;gap:6px;}
+.row-actions button{
+  background:transparent;border:1px solid var(--border);color:var(--fg);
+  font-size:11px;padding:3px 9px;border-radius:6px;cursor:pointer;
+}
+.row-actions button:hover{background:rgba(255,255,255,.08);}
+.row-actions button.del:hover{background:rgba(239,68,68,.2);border-color:var(--danger);color:#fca5a5;}
+
+.modal-back{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:200;padding:20px;}
+.modal-back.open{display:flex;}
+.modal{background:var(--panel);border:1px solid var(--border);border-radius:12px;width:100%;max-width:620px;max-height:85vh;display:flex;flex-direction:column;}
+.modal h3{margin:0;padding:14px 16px;border-bottom:1px solid var(--border);font-size:15px;}
+.modal .body{padding:16px;overflow:auto;}
+.modal .foot{padding:12px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;}
+.modal textarea{
+  width:100%;min-height:300px;box-sizing:border-box;background:#000;color:#e5e7eb;
+  border:1px solid var(--border);border-radius:8px;padding:12px;
+  font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;line-height:1.6;resize:vertical;
+}
+.modal .hint{color:var(--muted);font-size:12px;margin:0 0 10px;}
+.modal .err{color:#fca5a5;font-size:12px;margin-top:8px;display:none;}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Database</h1>
+  <p class="sub">Full read/write access to every collection in the portal store. Founder only.</p>
+
+  <div class="warn">
+    ⚠️ Direct store access — edits here take effect immediately across the whole portal and are not validated. Use <strong>Reset to seed</strong> to restore the demo data.
+  </div>
+
+  <div class="layout">
+    <aside class="side" id="collectionList"></aside>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h2 id="tableTitle">—</h2>
+          <span class="muted" id="tableMeta"></span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" id="addRowBtn">+ Add record</button>
+          <button class="btn ghost" id="editJsonBtn">Edit as JSON</button>
+          <button class="btn ghost" id="exportBtn">Export all</button>
+          <button class="btn ghost" id="importBtn">Import</button>
+          <button class="btn ghost danger" id="resetBtn">Reset to seed</button>
+        </div>
+      </div>
+      <div class="table-wrap"><table><thead id="tableHead"></thead><tbody id="tableBody"></tbody></table></div>
+      <div class="empty" id="emptyState" style="display:none">This collection is empty.</div>
+    </section>
+  </div>
+</div>
+
+<!-- JSON editor modal (used for add / edit / bulk / import) -->
+<div class="modal-back" id="jsonModal">
+  <div class="modal">
+    <h3 id="jsonTitle">Edit</h3>
+    <div class="body">
+      <p class="hint" id="jsonHint"></p>
+      <textarea id="jsonText" spellcheck="false"></textarea>
+      <div class="err" id="jsonErr"></div>
+    </div>
+    <div class="foot">
+      <button class="btn ghost" id="jsonCancel">Cancel</button>
+      <button class="btn" id="jsonSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="portal-db.js"></script>
+<script>
+(function(){
+  // Founder-only. Any other role is bounced back to the dashboard.
+  if(!XPortal.requireAuth()) return;
+  if(!XPortal.can('db.access')){
+    alert('The Database console is restricted to the Founder account.');
+    window.location.replace('dashboard.html');
+    return;
+  }
+
+  var current = 'users';
+
+  var listEl   = document.getElementById('collectionList');
+  var headEl   = document.getElementById('tableHead');
+  var bodyEl   = document.getElementById('tableBody');
+  var titleEl  = document.getElementById('tableTitle');
+  var metaEl   = document.getElementById('tableMeta');
+  var emptyEl  = document.getElementById('emptyState');
+
+  var modal    = document.getElementById('jsonModal');
+  var jsonText = document.getElementById('jsonText');
+  var jsonErr  = document.getElementById('jsonErr');
+  var onSave   = null;
+
+  function label(name){
+    return name.replace(/([A-Z])/g,' $1').replace(/^./, function(c){ return c.toUpperCase(); });
+  }
+
+  function openJson(title, hint, value, handler){
+    document.getElementById('jsonTitle').textContent = title;
+    document.getElementById('jsonHint').textContent = hint;
+    jsonText.value = value;
+    jsonErr.style.display = 'none';
+    onSave = handler;
+    modal.classList.add('open');
+    jsonText.focus();
+  }
+  function closeJson(){ modal.classList.remove('open'); onSave = null; }
+
+  document.getElementById('jsonCancel').addEventListener('click', closeJson);
+  modal.addEventListener('click', function(e){ if(e.target === modal) closeJson(); });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') closeJson(); });
+
+  document.getElementById('jsonSave').addEventListener('click', function(){
+    var parsed;
+    try {
+      parsed = JSON.parse(jsonText.value);
+    } catch(err){
+      jsonErr.textContent = 'Invalid JSON: ' + err.message;
+      jsonErr.style.display = 'block';
+      return;
+    }
+    try {
+      onSave(parsed);
+      closeJson();
+      render();
+    } catch(err){
+      jsonErr.textContent = err.message;
+      jsonErr.style.display = 'block';
+    }
+  });
+
+  // ---------- sidebar ----------
+  function renderSidebar(){
+    listEl.innerHTML = '';
+    XPortal.COLLECTIONS.forEach(function(name){
+      var rows = XPortal.list(name);
+      var btn = document.createElement('button');
+      if(name === current) btn.className = 'active';
+      var t = document.createElement('span');
+      t.textContent = label(name);
+      var c = document.createElement('span');
+      c.className = 'count';
+      c.textContent = Array.isArray(rows) ? rows.length : '—';
+      btn.appendChild(t); btn.appendChild(c);
+      btn.addEventListener('click', function(){ current = name; render(); });
+      listEl.appendChild(btn);
+    });
+  }
+
+  // ---------- table ----------
+  function renderTable(){
+    var rows = XPortal.list(current);
+    if(!Array.isArray(rows)) rows = [];
+
+    titleEl.textContent = label(current);
+    metaEl.textContent = rows.length + ' record' + (rows.length === 1 ? '' : 's') +
+                         ' • key: ' + XPortal.KEYS[current];
+
+    // Union of every key across rows, so partial records still show all columns.
+    var cols = [];
+    rows.forEach(function(r){
+      Object.keys(r || {}).forEach(function(k){ if(cols.indexOf(k) === -1) cols.push(k); });
+    });
+
+    headEl.innerHTML = '';
+    bodyEl.innerHTML = '';
+
+    if(!rows.length){
+      emptyEl.style.display = 'block';
+      return;
+    }
+    emptyEl.style.display = 'none';
+
+    var htr = document.createElement('tr');
+    cols.forEach(function(c){
+      var th = document.createElement('th');
+      th.textContent = c;
+      htr.appendChild(th);
+    });
+    var thAct = document.createElement('th');
+    thAct.textContent = 'actions';
+    htr.appendChild(thAct);
+    headEl.appendChild(htr);
+
+    rows.forEach(function(row, idx){
+      var tr = document.createElement('tr');
+      cols.forEach(function(c){
+        var td = document.createElement('td');
+        td.className = 'val';
+        var v = row[c];
+        if(v === undefined) td.textContent = '';
+        else if(v === null) td.textContent = 'null';
+        else if(typeof v === 'object') td.textContent = JSON.stringify(v);
+        else td.textContent = String(v);
+        td.title = td.textContent;
+        tr.appendChild(td);
+      });
+
+      var td = document.createElement('td');
+      var wrap = document.createElement('div');
+      wrap.className = 'row-actions';
+
+      var edit = document.createElement('button');
+      edit.textContent = 'Edit';
+      edit.addEventListener('click', function(){
+        openJson('Edit record', 'Editing record ' + (row.id || '#' + idx) + ' in ' + label(current) + '.',
+          JSON.stringify(row, null, 2), function(obj){
+            var all = XPortal.list(current);
+            all[idx] = obj;
+            XPortal.save(current, all);
+            XPortal.audit('Founder edited ' + current + ' record ' + (obj.id || idx));
+          });
+      });
+
+      var del = document.createElement('button');
+      del.className = 'del';
+      del.textContent = 'Delete';
+      del.addEventListener('click', function(){
+        if(!confirm('Delete this record from ' + label(current) + '? This cannot be undone.')) return;
+        var all = XPortal.list(current);
+        all.splice(idx, 1);
+        XPortal.save(current, all);
+        XPortal.audit('Founder deleted ' + current + ' record ' + (row.id || idx));
+        render();
+      });
+
+      wrap.appendChild(edit); wrap.appendChild(del);
+      td.appendChild(wrap); tr.appendChild(td);
+      bodyEl.appendChild(tr);
+    });
+  }
+
+  function render(){ renderSidebar(); renderTable(); }
+
+  // ---------- toolbar ----------
+  document.getElementById('addRowBtn').addEventListener('click', function(){
+    var rows = XPortal.list(current);
+    // Offer a blank shaped like the existing rows so the founder isn't guessing.
+    var template = {};
+    if(rows.length){
+      Object.keys(rows[0]).forEach(function(k){ template[k] = k === 'id' ? XPortal.uid(current.charAt(0)) : ''; });
+    } else {
+      template.id = XPortal.uid(current.charAt(0));
+    }
+    openJson('Add record to ' + label(current), 'Fill in the fields, then Save.',
+      JSON.stringify(template, null, 2), function(obj){
+        var all = XPortal.list(current);
+        all.push(obj);
+        XPortal.save(current, all);
+        XPortal.audit('Founder added a record to ' + current);
+      });
+  });
+
+  document.getElementById('editJsonBtn').addEventListener('click', function(){
+    openJson('Edit ' + label(current) + ' as JSON', 'The whole collection. Must be a JSON array.',
+      JSON.stringify(XPortal.list(current), null, 2), function(arr){
+        if(!Array.isArray(arr)) throw new Error('This collection must be an array.');
+        XPortal.save(current, arr);
+        XPortal.audit('Founder bulk-edited ' + current);
+      });
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', function(){
+    openJson('Export — all collections', 'Copy this JSON to back up the full store. Read-only; Cancel to close.',
+      JSON.stringify(XPortal.exportAll(), null, 2), function(){});
+  });
+
+  document.getElementById('importBtn').addEventListener('click', function(){
+    openJson('Import', 'Paste a full-store JSON export. Collections present in the JSON are overwritten; the rest are left alone.',
+      '{\n  \n}', function(obj){
+        if(typeof obj !== 'object' || Array.isArray(obj) || obj === null){
+          throw new Error('Import expects a JSON object of collections.');
+        }
+        XPortal.importAll(obj);
+        XPortal.audit('Founder imported store data');
+      });
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', function(){
+    if(!confirm('Reset every collection to the original demo seed? All changes will be lost.')) return;
+    XPortal.resetAll();
+    render();
+  });
+
+  render();
+})();
+</script>
+<script src="portal-nav.js"></script>
+</body>
+</html>
